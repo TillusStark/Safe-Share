@@ -1,13 +1,12 @@
-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Grid3X3, Settings } from "lucide-react";
 import { Post } from "@/types/post";
-import { Profile } from "@/types/profile";
+import type { Profile as ProfileType } from "@/types/profile";
 
 // Temporary mock data - in a real app this would come from an API
-const mockProfile: Profile = {
+const mockProfile: ProfileType = {
   id: "1",
   username: "john_doe",
   name: "John Doe",
