@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Grid3X3, Settings } from "lucide-react";
 import { Post } from "@/types/post";
 import type { Profile as ProfileType } from "@/types/profile";
+import FollowButton from "@/components/FollowButton";
+import { useState } from "react";
 
 // Temporary mock data - in a real app this would come from an API
 const mockProfile: ProfileType = {
@@ -43,6 +45,18 @@ const mockPosts: Post[] = [
 ];
 
 const Profile = () => {
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const handleFollow = async () => {
+    // This will be connected to Supabase later
+    setIsFollowing(true);
+  };
+
+  const handleUnfollow = async () => {
+    // This will be connected to Supabase later
+    setIsFollowing(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-10">
@@ -66,9 +80,11 @@ const Profile = () => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">{mockProfile.username}</h2>
                 <div className="flex gap-2">
-                  <Button className="flex-1 sm:flex-none bg-purple-600 hover:bg-purple-700">
-                    Follow
-                  </Button>
+                  <FollowButton 
+                    isFollowing={isFollowing}
+                    onFollow={handleFollow}
+                    onUnfollow={handleUnfollow}
+                  />
                   <Button variant="outline">Message</Button>
                 </div>
               </div>
