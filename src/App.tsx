@@ -9,6 +9,7 @@ import Upload from "./pages/Upload";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/upload" element={<Upload />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

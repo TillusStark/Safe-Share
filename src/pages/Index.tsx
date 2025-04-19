@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { UploadIcon, UserCircle } from "lucide-react";
+import { UploadIcon, UserCircle, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Feed from "@/components/Feed";
 
@@ -15,6 +15,10 @@ const Index = () => {
           <div className="flex gap-2">
             <Button onClick={() => navigate("/login")} variant="ghost">
               Login
+            </Button>
+            <Button onClick={() => navigate("/signup")} variant="ghost">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Sign Up
             </Button>
             <Button onClick={() => navigate("/upload")} className="bg-purple-600 hover:bg-purple-700">
               <UploadIcon className="mr-2 h-4 w-4" />
