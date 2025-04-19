@@ -1,3 +1,4 @@
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +40,23 @@ const SignUp = () => {
 
   const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
     try {
+      // Check if the email is already in use
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', data.username)
+        .single();
+      
+      if (existingUsers) {
+        toast({
+          variant: "destructive",
+          title: "Username already taken",
+          description: "Please choose a different username.",
+        });
+        return;
+      }
+
+      // Proceed with signup
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -53,11 +71,12 @@ const SignUp = () => {
 
       toast({
         title: "Sign Up Successful",
-        description: "Your account has been created.",
+        description: "Your account has been created. Please check your email for verification.",
       });
       
       navigate("/");
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         variant: "destructive",
         title: "Sign Up Error",
