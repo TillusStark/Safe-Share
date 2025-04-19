@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -8,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Lock, Mail, UserPlus } from "lucide-react";
+import { Lock, Mail, User, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const signUpSchema = z.object({
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be less than 20 characters")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string()
@@ -26,6 +30,7 @@ const SignUp = () => {
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
+      username: "",
       email: "",
       password: "",
       confirmPassword: ""
@@ -34,16 +39,29 @@ const SignUp = () => {
 
   const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
     try {
-      console.log("Sign up data:", data);
-      toast({
-        title: "Sign Up Initiated",
-        description: "Click 'Connect to Supabase' in the top right to complete setup",
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            username: data.username,
+          }
+        }
       });
-    } catch (error) {
+
+      if (error) throw error;
+
+      toast({
+        title: "Sign Up Successful",
+        description: "Your account has been created.",
+      });
+      
+      navigate("/");
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Sign Up Error",
-        description: "Failed to sign up. Please try again.",
+        description: error.message || "Failed to sign up. Please try again.",
       });
     }
   };
@@ -59,6 +77,27 @@ const SignUp = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Input 
+                          placeholder="Choose a username" 
+                          {...field} 
+                          className="pl-10"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="email"
@@ -79,7 +118,7 @@ const SignUp = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="password"
