@@ -13,6 +13,9 @@ const Index = () => {
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-purple-600">SafeShare</h1>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/login")} variant="ghost">
+              Login
+            </Button>
             <Button onClick={() => navigate("/upload")} className="bg-purple-600 hover:bg-purple-700">
               <UploadIcon className="mr-2 h-4 w-4" />
               Share
