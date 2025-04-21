@@ -8,5 +8,6 @@ export interface Post {
     avatar: string;
   };
   likes: number;
+  liked?: boolean;
   timestamp: string;
 }

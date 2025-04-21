@@ -1,11 +1,13 @@
 
+import { useState } from "react";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Post } from "@/types/post";
+import { toast } from "@/hooks/use-toast";
 
 // Temporary mock data - in a real app this would come from a database
-const mockPosts: Post[] = [
+const mockPostsData: Post[] = [
   {
     id: "1",
     imageUrl: "https://picsum.photos/600/600",
@@ -31,9 +33,36 @@ const mockPosts: Post[] = [
 ];
 
 const Feed = () => {
+  const [posts, setPosts] = useState<Post[]>(
+    mockPostsData.map(post => ({ ...post, liked: false }))
+  );
+
+  const handleLike = (id: string) => {
+    setPosts(prevPosts => 
+      prevPosts.map(post => {
+        if (post.id === id) {
+          const liked = !post.liked;
+          return { 
+            ...post, 
+            liked,
+            likes: liked ? post.likes + 1 : post.likes - 1 
+          };
+        }
+        return post;
+      })
+    );
+    
+    // In a real app, you would also update the like status in the database
+    toast({
+      title: "Success",
+      description: "Like status updated",
+      duration: 2000,
+    });
+  };
+
   return (
     <div className="max-w-xl mx-auto space-y-6 py-8">
-      {mockPosts.map((post) => (
+      {posts.map((post) => (
         <Card key={post.id} className="border-0 shadow-sm">
           <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
             <img
@@ -53,8 +82,13 @@ const Feed = () => {
           <CardFooter className="flex flex-col items-start p-4 space-y-3">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="icon" className="hover:text-pink-500">
-                  <Heart className="h-6 w-6" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={post.liked ? "text-pink-500" : "hover:text-pink-500"}
+                  onClick={() => handleLike(post.id)}
+                >
+                  <Heart className="h-6 w-6" fill={post.liked ? "currentColor" : "none"} />
                 </Button>
                 <Button variant="ghost" size="icon">
                   <MessageCircle className="h-6 w-6" />
