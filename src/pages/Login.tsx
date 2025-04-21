@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useEffect } from "react";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -17,6 +19,17 @@ const loginSchema = z.object({
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, signIn, loading } = useSupabaseAuth();
+
+  useEffect(() => {
+    if (user) {
+      toast({
+        title: "Logged in!",
+        description: "Welcome back!",
+      });
+      navigate("/profile");
+    }
+  }, [user, toast, navigate]);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -28,17 +41,13 @@ const Login = () => {
 
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     try {
-      // This is where we'll add Supabase auth
-      console.log("Login data:", data);
-      toast({
-        title: "Coming soon!",
-        description: "Login functionality will be implemented once Supabase is connected.",
-      });
-    } catch (error) {
+      await signIn(data.email, data.password);
+      // Success handled by useEffect
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to login. Please try again.",
+        description: error?.message || "Failed to login. Please try again.",
       });
     }
   };
@@ -80,8 +89,8 @@ const Login = () => {
                 )}
               />
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
-                Login
+              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
+                {loading ? "Loading..." : "Login"}
               </Button>
             </form>
           </Form>

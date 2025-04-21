@@ -2,106 +2,88 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Grid3X3, Settings } from "lucide-react";
-import { Post } from "@/types/post";
-import type { Profile as ProfileType } from "@/types/profile";
-import FollowButton from "@/components/FollowButton";
-import { useState } from "react";
+import { Grid3X3 } from "lucide-react";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
-
-// Temporary mock data - in a real app this would come from an API
-const mockProfile: ProfileType = {
-  id: "1",
-  username: "john_doe",
-  name: "John Doe",
-  avatar: "https://picsum.photos/200",
-  bio: "📸 Photography enthusiast | Travel lover 🌎 | Coffee addict ☕",
-  postsCount: 42,
-  followersCount: 1234,
-  followingCount: 567,
-};
-
-const mockPosts: Post[] = [
-  {
-    id: "1",
-    imageUrl: "https://picsum.photos/600/600",
-    caption: "Beautiful sunset at the beach! 🌅",
-    author: {
-      name: mockProfile.username,
-      avatar: mockProfile.avatar,
-    },
-    likes: 123,
-    timestamp: "2h ago",
-  },
-  {
-    id: "2",
-    imageUrl: "https://picsum.photos/601/600",
-    caption: "Coffee time ☕️",
-    author: {
-      name: mockProfile.username,
-      avatar: mockProfile.avatar,
-    },
-    likes: 89,
-    timestamp: "4h ago",
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
-  const [isFollowing, setIsFollowing] = useState(false);
+  const { user, loading, session } = useSupabaseAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  const handleFollow = async () => {
-    // This will be connected to Supabase later
-    setIsFollowing(true);
-  };
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+      .then(({ data, error }) => {
+        setProfile(data);
+        setProfileLoading(false);
+      });
+  }, [user]);
 
-  const handleUnfollow = async () => {
-    // This will be connected to Supabase later
-    setIsFollowing(false);
-  };
+  // Mock posts just for UI (until you add real posts support)
+  const mockPosts = [
+    {
+      id: "1",
+      imageUrl: "https://picsum.photos/600/600",
+      caption: "Beautiful sunset at the beach! 🌅",
+      likes: 123,
+      timestamp: "2h ago",
+    },
+    {
+      id: "2",
+      imageUrl: "https://picsum.photos/601/600",
+      caption: "Coffee time ☕️",
+      likes: 89,
+      timestamp: "4h ago",
+    },
+  ];
+
+  if (loading || profileLoading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="text-lg font-semibold text-center">Please log in to view your profile.</div>
+          <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700" onClick={() => window.location.href = "/login"}>Login</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
-      
       <main className="pt-20 pb-8 max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <Avatar className="w-24 h-24">
-              <AvatarImage src={mockProfile.avatar} alt={mockProfile.username} />
-              <AvatarFallback>{mockProfile.username[0]}</AvatarFallback>
+              <AvatarImage src={`https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`} alt={profile?.username ?? user.email} />
+              <AvatarFallback>{(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-                <h2 className="text-xl font-semibold">{mockProfile.username}</h2>
+                <h2 className="text-xl font-semibold">{profile?.username ?? user.email}</h2>
                 <div className="flex gap-2">
-                  <FollowButton 
-                    isFollowing={isFollowing}
-                    onFollow={handleFollow}
-                    onUnfollow={handleUnfollow}
-                  />
+                  {/* TODO: Add FollowButton if needed */}
                   <Button variant="outline">Message</Button>
                 </div>
               </div>
-              
-              <div className="flex justify-center sm:justify-start gap-6 mb-4">
-                <div className="text-center">
-                  <div className="font-semibold">{mockProfile.postsCount}</div>
-                  <div className="text-gray-500 text-sm">posts</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold">{mockProfile.followersCount}</div>
-                  <div className="text-gray-500 text-sm">followers</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold">{mockProfile.followingCount}</div>
-                  <div className="text-gray-500 text-sm">following</div>
-                </div>
-              </div>
-              
               <div>
-                <div className="font-semibold">{mockProfile.name}</div>
-                <p className="text-gray-600">{mockProfile.bio}</p>
+                <div className="font-semibold">{user.email}</div>
               </div>
             </div>
           </div>
