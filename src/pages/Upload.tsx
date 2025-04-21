@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadIcon, AlertTriangle, CheckCircle } from "lucide-react";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import UploadDropzone from "@/components/UploadDropzone";
 import ModerationStatus from "@/components/ModerationStatus";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 type UploadStatus = "idle" | "uploading" | "processing" | "success" | "error";
 type ModerationResult = {
@@ -20,6 +22,7 @@ type ModerationResult = {
 const Upload = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useSupabaseAuth();
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [moderationResult, setModerationResult] = useState<ModerationResult | null>(null);
@@ -61,6 +64,21 @@ const Upload = () => {
     setModerationResult(null);
   };
 
+  const handleShareNow = () => {
+    // In a real app, you would save the post to the database here
+    toast({
+      title: "Post shared!",
+      description: "Your content has been published",
+    });
+    
+    // Navigate back to the homepage after successful share
+    navigate("/");
+  };
+
+  const handleUploadAnother = () => {
+    resetUpload();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
@@ -88,6 +106,8 @@ const Upload = () => {
                 file={file} 
                 moderationResult={moderationResult}
                 onReset={resetUpload}
+                onShare={handleShareNow}
+                onUploadAnother={handleUploadAnother}
               />
             )}
           </CardContent>

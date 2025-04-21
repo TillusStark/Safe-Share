@@ -1,3 +1,4 @@
+
 import { CheckCircle, AlertTriangle, X, Loader2, Upload, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -17,9 +18,18 @@ interface ModerationStatusProps {
   file: File | null;
   moderationResult: ModerationResult | null;
   onReset: () => void;
+  onShare?: () => void;
+  onUploadAnother?: () => void;
 }
 
-const ModerationStatus = ({ status, file, moderationResult, onReset }: ModerationStatusProps) => {
+const ModerationStatus = ({ 
+  status, 
+  file, 
+  moderationResult, 
+  onReset,
+  onShare,
+  onUploadAnother
+}: ModerationStatusProps) => {
   const renderStatusContent = () => {
     switch (status) {
       case "uploading":
@@ -60,10 +70,16 @@ const ModerationStatus = ({ status, file, moderationResult, onReset }: Moderatio
             </div>
             
             <div className="flex justify-center space-x-4">
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Button 
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={onShare}
+              >
                 Share now
               </Button>
-              <Button variant="outline" onClick={onReset}>
+              <Button 
+                variant="outline" 
+                onClick={onUploadAnother || onReset}
+              >
                 Upload another
               </Button>
             </div>
