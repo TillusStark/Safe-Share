@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadIcon, AlertTriangle, CheckCircle } from "lucide-react";
@@ -27,34 +26,51 @@ const Upload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [moderationResult, setModerationResult] = useState<ModerationResult | null>(null);
 
+  const moderateFile = async (file: File): Promise<ModerationResult> => {
+    const response = await fetch("/functions/v1/moderate-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, type: file.type }),
+    });
+    if (!response.ok) throw new Error("Failed to moderate file");
+    return response.json();
+  };
+
   const handleUpload = async (file: File) => {
     setFile(file);
     setStatus("uploading");
 
-    // Simulate file upload
-    setTimeout(() => {
+    setTimeout(async () => {
       setStatus("processing");
       toast({
         title: "Upload successful",
         description: "Your content is now being analyzed by our AI moderation system",
       });
 
-      // Simulate AI processing
-      setTimeout(() => {
-        // Simulate a moderation result
-        // In a real app, this would come from an API call to your AI moderation system
-        const simulatedResult: ModerationResult = {
-          status: "passed",
-          issues: [],
-        };
-        
-        setModerationResult(simulatedResult);
-        setStatus("success");
+      try {
+        const result = await moderateFile(file);
+        setModerationResult(result);
+
+        let isSafe = result.status === "passed";
+        setStatus(isSafe ? "success" : "error");
+
         toast({
-          title: "Moderation complete",
-          description: "Your content has passed our safety checks and is ready to be published",
+          title: isSafe ? "Moderation complete" : "Moderation issues found",
+          description: isSafe
+            ? "Your content has passed our safety checks and is ready to be published"
+            : "Some issues were found. Please review and try again.",
         });
-      }, 3000);
+      } catch (err) {
+        setModerationResult({
+          status: "warning",
+          issues: [{ category: "AI Failure", description: "Could not analyze your file", severity: "high" }],
+        });
+        setStatus("error");
+        toast({
+          title: "Moderation error",
+          description: "AI moderation could not complete. Please try again later.",
+        });
+      }
     }, 2000);
   };
 
@@ -65,13 +81,18 @@ const Upload = () => {
   };
 
   const handleShareNow = () => {
-    // In a real app, you would save the post to the database here
+    if (moderationResult && moderationResult.status !== "passed") {
+      toast({
+        title: "Cannot share post",
+        description: "This content did not pass moderation and cannot be published.",
+      });
+      return;
+    }
+
     toast({
       title: "Post shared!",
       description: "Your content has been published",
     });
-    
-    // Navigate back to the homepage after successful share
     navigate("/");
   };
 
