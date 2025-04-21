@@ -1,3 +1,4 @@
+
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Post } from "@/types/post";
 import type { Profile as ProfileType } from "@/types/profile";
 import FollowButton from "@/components/FollowButton";
 import { useState } from "react";
+import NavigationBar from "@/components/NavigationBar";
 
 // Temporary mock data - in a real app this would come from an API
 const mockProfile: ProfileType = {
@@ -59,15 +61,8 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-purple-600">Profile</h1>
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
+      <NavigationBar />
+      
       <main className="pt-20 pb-8 max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
