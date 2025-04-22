@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
@@ -8,7 +7,6 @@ import { toast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Temporary mock data - in a real app this would come from a database
 const mockPostsData: Post[] = [
   {
     id: "1",
@@ -70,6 +68,40 @@ const Feed = () => {
     });
   };
 
+  const handleShare = async (post: Post) => {
+    const shareUrl = `${window.location.origin}/post/${post.id}`;
+    const shareText = `Check out this post by ${post.author.name}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Share this post',
+          text: shareText,
+          url: shareUrl,
+        });
+        
+        toast({
+          title: "Shared successfully",
+          description: "Post has been shared",
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        
+        toast({
+          title: "Link copied",
+          description: "Post link copied to clipboard",
+        });
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
+      toast({
+        variant: "destructive",
+        title: "Share failed",
+        description: "Could not share this post. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto space-y-6 py-8">
       {posts.map((post) => (
@@ -116,7 +148,7 @@ const Feed = () => {
                 <Button variant="ghost" size="icon">
                   <MessageCircle className="h-6 w-6" />
                 </Button>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" onClick={() => handleShare(post)}>
                   <Share2 className="h-6 w-6" />
                 </Button>
               </div>
