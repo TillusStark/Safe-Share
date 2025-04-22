@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
@@ -34,9 +36,63 @@ const mockPostsData: Post[] = [
 
 const Feed = () => {
   const { user } = useSupabaseAuth();
-  const [posts, setPosts] = useState<Post[]>(
-    mockPostsData.map(post => ({ ...post, liked: false }))
-  );
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*, profiles: user_id(username)")
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setPosts(data.map(post => ({
+          id: post.id,
+          imageUrl: post.image_url,
+          caption: post.caption ?? "",
+          author: {
+            name: post.profiles?.username ?? "Unknown",
+            avatar: `https://api.dicebear.com/8.x/identicon/svg?seed=${post.profiles?.username ?? post.user_id}`,
+          },
+          likes: 0,
+          timestamp: new Date(post.created_at).toLocaleString(),
+        })));
+      }
+      setLoading(false);
+    }
+    fetchPosts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6 py-8">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="border-0 shadow-sm">
+            <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="w-24 h-6 rounded" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <Skeleton className="w-full aspect-square" />
+            </CardContent>
+            <CardFooter className="flex flex-col items-start p-4 space-y-3">
+              <Skeleton className="h-8 w-32 rounded" />
+              <Skeleton className="h-4 w-48 rounded" />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!posts.length) {
+    return (
+      <div className="max-w-xl mx-auto py-32 text-center text-gray-500">
+        No posts yet. Be the first to share something!
+      </div>
+    );
+  }
 
   const handleLike = (id: string) => {
     if (!user) {

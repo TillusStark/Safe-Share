@@ -12,6 +12,8 @@ const Profile = () => {
   const { user, loading, session } = useSupabaseAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -31,25 +33,25 @@ const Profile = () => {
       });
   }, [user]);
 
-  // Mock posts just for UI (until you add real posts support)
-  const mockPosts = [
-    {
-      id: "1",
-      imageUrl: "https://picsum.photos/600/600",
-      caption: "Beautiful sunset at the beach! 🌅",
-      likes: 123,
-      timestamp: "2h ago",
-    },
-    {
-      id: "2",
-      imageUrl: "https://picsum.photos/601/600",
-      caption: "Coffee time ☕️",
-      likes: 89,
-      timestamp: "4h ago",
-    },
-  ];
+  useEffect(() => {
+    if (!user) {
+      setUserPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+    setPostsLoading(true);
+    supabase
+      .from("posts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        setUserPosts(data || []);
+        setPostsLoading(false);
+      });
+  }, [user]);
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || postsLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
 
@@ -88,12 +90,14 @@ const Profile = () => {
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-3 gap-1">
-          {mockPosts.map((post) => (
+          {userPosts.length === 0 && (
+            <div className="col-span-3 py-16 text-center text-gray-400">No posts yet.</div>
+          )}
+          {userPosts.map((post) => (
             <Card key={post.id} className="aspect-square overflow-hidden border-0">
               <img
-                src={post.imageUrl}
+                src={post.image_url}
                 alt={post.caption}
                 className="w-full h-full object-cover hover:opacity-90 transition-opacity cursor-pointer"
               />

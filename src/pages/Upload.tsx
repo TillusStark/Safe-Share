@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import UploadDropzone from "@/components/UploadDropzone";
 import ModerationStatus from "@/components/ModerationStatus";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 
 type UploadStatus = "idle" | "uploading" | "processing" | "success" | "error";
 type ModerationResult = {
@@ -27,6 +29,10 @@ const Upload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [moderationResult, setModerationResult] = useState<ModerationResult | null>(null);
 
+  // New caption state
+  const [caption, setCaption] = useState("");
+  const [isSharingNow, setIsSharingNow] = useState(false);
+
   const moderateFile = async (file: File): Promise<ModerationResult> => {
     try {
       const response = await fetch("/functions/v1/moderate-content", {
@@ -37,7 +43,6 @@ const Upload = () => {
       
       if (!response.ok) {
         console.error("Moderation API error:", response.status, response.statusText);
-        // If the API fails, provide a fallback result that allows the content to proceed
         return {
           status: "passed",
           issues: [{
@@ -47,11 +52,9 @@ const Upload = () => {
           }]
         };
       }
-      
       return await response.json();
     } catch (error) {
       console.error("Error during moderation:", error);
-      // Return a fallback result on any error
       return {
         status: "passed",
         issues: [{
@@ -66,7 +69,6 @@ const Upload = () => {
   const handleUpload = async (file: File) => {
     setFile(file);
     setStatus("uploading");
-
     setTimeout(async () => {
       setStatus("processing");
       toast({
@@ -93,7 +95,7 @@ const Upload = () => {
           status: "warning",
           issues: [{ category: "Processing Error", description: "Could not analyze your file. You may still proceed.", severity: "medium" }],
         });
-        setStatus("success"); // Changed to success to allow proceeding
+        setStatus("success");
         toast({
           variant: "destructive",
           title: "Moderation notice",
@@ -107,9 +109,12 @@ const Upload = () => {
     setFile(null);
     setStatus("idle");
     setModerationResult(null);
+    setCaption("");
+    setIsSharingNow(false);
   };
 
-  const handleShareNow = () => {
+  // UPLOAD TO SUPABASE STORAGE + DB ON SHARE
+  const handleShareNow = async () => {
     if (moderationResult && moderationResult.status === "failed") {
       toast({
         title: "Cannot share post",
@@ -117,16 +122,126 @@ const Upload = () => {
       });
       return;
     }
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "You must be logged in",
+        description: "Please log in to share a post.",
+      });
+      return;
+    }
+    if (!file) {
+      toast({ title: "No file selected", description: "Please select a file to share." });
+      return;
+    }
+    setIsSharingNow(true);
+
+    // 1. Upload image to Supabase Storage
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/${Date.now()}.${ext}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("post-images")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast({ variant: "destructive", title: "File upload failed", description: String(uploadError.message) });
+      setIsSharingNow(false);
+      return;
+    }
+
+    // 2. Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from("post-images")
+      .getPublicUrl(filePath);
+
+    const imageUrl = publicUrlData?.publicUrl;
+    if (!imageUrl) {
+      toast({ variant: "destructive", title: "Could not get image url" });
+      setIsSharingNow(false);
+      return;
+    }
+
+    // 3. Insert post record
+    const { error: insertError } = await supabase
+      .from("posts")
+      .insert({
+        user_id: user.id,
+        image_url: imageUrl,
+        caption: caption,
+      });
+
+    if (insertError) {
+      toast({ variant: "destructive", title: "Failed to save post", description: insertError.message });
+      setIsSharingNow(false);
+      return;
+    }
 
     toast({
       title: "Post shared!",
       description: "Your content has been published",
     });
+    setIsSharingNow(false);
     navigate("/");
   };
 
   const handleUploadAnother = () => {
     resetUpload();
+  };
+
+  // Render: after moderation passes, ask for caption and confirm share
+  const renderModerationStatus = () => {
+    if (status === "success" && file) {
+      return (
+        <div>
+          <ModerationStatus 
+            status={status} 
+            file={file} 
+            moderationResult={moderationResult}
+            onReset={resetUpload}
+            // Remove onShare from ModerationStatus, use manual button below
+          />
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Caption
+            </label>
+            <Input
+              value={caption}
+              onChange={e => setCaption(e.target.value)}
+              maxLength={150}
+              placeholder="Write a caption for your post..."
+              className="mb-3"
+              disabled={isSharingNow}
+            />
+            <Button
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              onClick={handleShareNow}
+              disabled={isSharingNow || !caption.trim()}
+            >
+              {isSharingNow ? "Sharing..." : "Share now"}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleUploadAnother}
+              className="ml-2"
+              disabled={isSharingNow}
+            >
+              Upload another
+            </Button>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <ModerationStatus 
+          status={status} 
+          file={file} 
+          moderationResult={moderationResult}
+          onReset={resetUpload}
+          // Do not show "Share now" until caption prompt
+          onUploadAnother={handleUploadAnother}
+        />
+      );
+    }
   };
 
   return (
@@ -151,14 +266,7 @@ const Upload = () => {
             {status === "idle" ? (
               <UploadDropzone onUpload={handleUpload} />
             ) : (
-              <ModerationStatus 
-                status={status} 
-                file={file} 
-                moderationResult={moderationResult}
-                onReset={resetUpload}
-                onShare={handleShareNow}
-                onUploadAnother={handleUploadAnother}
-              />
+              renderModerationStatus()
             )}
           </CardContent>
         </Card>
