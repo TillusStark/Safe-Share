@@ -5,6 +5,8 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Post } from "@/types/post";
 import { toast } from "@/hooks/use-toast";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Temporary mock data - in a real app this would come from a database
 const mockPostsData: Post[] = [
@@ -33,11 +35,20 @@ const mockPostsData: Post[] = [
 ];
 
 const Feed = () => {
+  const { user } = useSupabaseAuth();
   const [posts, setPosts] = useState<Post[]>(
     mockPostsData.map(post => ({ ...post, liked: false }))
   );
 
   const handleLike = (id: string) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Login required",
+        description: "You need to login to like posts.",
+      });
+      return;
+    }
     setPosts(prevPosts => 
       prevPosts.map(post => {
         if (post.id === id) {
@@ -52,7 +63,6 @@ const Feed = () => {
       })
     );
     
-    // In a real app, you would also update the like status in the database
     toast({
       title: "Success",
       description: "Like status updated",
@@ -82,14 +92,27 @@ const Feed = () => {
           <CardFooter className="flex flex-col items-start p-4 space-y-3">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={post.liked ? "text-pink-500" : "hover:text-pink-500"}
-                  onClick={() => handleLike(post.id)}
-                >
-                  <Heart className="h-6 w-6" fill={post.liked ? "currentColor" : "none"} />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className={post.liked ? "text-pink-500" : "hover:text-pink-500"}
+                        onClick={() => handleLike(post.id)}
+                        disabled={!user}
+                        aria-label={user ? (post.liked ? "Unlike" : "Like") : "Login to like"}
+                      >
+                        <Heart className="h-6 w-6" fill={post.liked ? "currentColor" : "none"} />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!user && (
+                    <TooltipContent side="top">
+                      Login to like posts
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <Button variant="ghost" size="icon">
                   <MessageCircle className="h-6 w-6" />
                 </Button>
