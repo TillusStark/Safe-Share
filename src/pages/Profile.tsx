@@ -9,7 +9,7 @@ import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
-  const { user, loading, session } = useSupabaseAuth();
+  const { user, loading } = useSupabaseAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -21,13 +21,18 @@ const Profile = () => {
       setProfileLoading(false);
       return;
     }
+    
     setProfileLoading(true);
+    
     supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single()
       .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching profile:", error);
+        }
         setProfile(data);
         setProfileLoading(false);
       });
@@ -39,13 +44,19 @@ const Profile = () => {
       setPostsLoading(false);
       return;
     }
+    
     setPostsLoading(true);
+    
     supabase
       .from("posts")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching user posts:", error);
+        }
+        console.log("User posts loaded:", data?.length ?? 0);
         setUserPosts(data || []);
         setPostsLoading(false);
       });
@@ -80,25 +91,27 @@ const Profile = () => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">{profile?.username ?? user.email}</h2>
                 <div className="flex gap-2">
-                  {/* TODO: Add FollowButton if needed */}
                   <Button variant="outline">Message</Button>
                 </div>
               </div>
               <div>
                 <div className="font-semibold">{user.email}</div>
+                <div className="text-gray-500 mt-1">{userPosts.length} posts</div>
               </div>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-1">
           {userPosts.length === 0 && (
-            <div className="col-span-3 py-16 text-center text-gray-400">No posts yet.</div>
+            <div className="col-span-3 py-16 text-center text-gray-400">
+              No posts yet. <a href="/upload" className="text-purple-600 hover:underline">Share your first post</a>
+            </div>
           )}
           {userPosts.map((post) => (
             <Card key={post.id} className="aspect-square overflow-hidden border-0">
               <img
                 src={post.image_url}
-                alt={post.caption}
+                alt={post.caption || "User post"}
                 className="w-full h-full object-cover hover:opacity-90 transition-opacity cursor-pointer"
               />
               <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">

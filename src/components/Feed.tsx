@@ -9,31 +9,6 @@ import { toast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const mockPostsData: Post[] = [
-  {
-    id: "1",
-    imageUrl: "https://picsum.photos/600/600",
-    caption: "Beautiful sunset at the beach! 🌅",
-    author: {
-      name: "john_doe",
-      avatar: "https://picsum.photos/50/50",
-    },
-    likes: 123,
-    timestamp: "2h ago",
-  },
-  {
-    id: "2",
-    imageUrl: "https://picsum.photos/601/600",
-    caption: "Coffee time ☕️",
-    author: {
-      name: "coffee_lover",
-      avatar: "https://picsum.photos/51/51",
-    },
-    likes: 89,
-    timestamp: "4h ago",
-  },
-];
-
 const Feed = () => {
   const { user } = useSupabaseAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -42,32 +17,75 @@ const Feed = () => {
   useEffect(() => {
     async function fetchPosts() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*, profiles: user_id(username)")
-        .order("created_at", { ascending: false });
-      if (!error && data) {
-        setPosts(data.map(post => ({
-          id: post.id,
-          imageUrl: post.image_url,
-          caption: post.caption ?? "",
-          author: {
-            name: post.profiles?.username ?? "Unknown",
-            avatar: `https://api.dicebear.com/8.x/identicon/svg?seed=${post.profiles?.username ?? post.user_id}`,
-          },
-          likes: 0,
-          timestamp: new Date(post.created_at).toLocaleString(),
-        })));
+      try {
+        const { data: postsData, error: postsError } = await supabase
+          .from("posts")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (postsError) {
+          console.error("Error fetching posts:", postsError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load posts. Please try again later.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("*");
+
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+        }
+
+        const profileMap = new Map();
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            profileMap.set(profile.id, profile.username);
+          });
+        }
+
+        if (postsData) {
+          const transformedPosts = postsData.map(post => {
+            const username = profileMap.get(post.user_id) || "Unknown User";
+            return {
+              id: post.id,
+              imageUrl: post.image_url,
+              caption: post.caption || "",
+              author: {
+                name: username,
+                avatar: `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
+              },
+              likes: 0,
+              timestamp: new Date(post.created_at).toLocaleString(),
+            };
+          });
+          
+          setPosts(transformedPosts);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching posts:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "An unexpected error occurred. Please try again later.",
+        });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
+    
     fetchPosts();
   }, []);
 
   if (loading) {
     return (
       <div className="max-w-xl mx-auto space-y-6 py-8">
-        {[...Array(3)].map((_, i) => (
+        [...Array(3)].map((_, i) => (
           <Card key={i} className="border-0 shadow-sm">
             <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
               <Skeleton className="w-10 h-10 rounded-full" />
@@ -81,7 +99,7 @@ const Feed = () => {
               <Skeleton className="h-4 w-48 rounded" />
             </CardFooter>
           </Card>
-        ))}
+        ))
       </div>
     );
   }
