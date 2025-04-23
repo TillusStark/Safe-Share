@@ -7,6 +7,7 @@ import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "@/integrations/supabase/client";
+import AvatarUploader from "@/components/AvatarUploader";
 
 const Profile = () => {
   const { user, loading } = useSupabaseAuth();
@@ -14,6 +15,7 @@ const Profile = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [showAvatarUpload, setShowAvatarUpload] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -23,7 +25,6 @@ const Profile = () => {
     }
     
     setProfileLoading(true);
-    
     supabase
       .from("profiles")
       .select("*")
@@ -46,7 +47,6 @@ const Profile = () => {
     }
     
     setPostsLoading(true);
-    
     supabase
       .from("posts")
       .select("*")
@@ -56,11 +56,20 @@ const Profile = () => {
         if (error) {
           console.error("Error fetching user posts:", error);
         }
-        console.log("User posts loaded:", data?.length ?? 0);
         setUserPosts(data || []);
         setPostsLoading(false);
       });
   }, [user]);
+
+  // Save avatar_url to profile in Supabase
+  const handleAvatarUploaded = async (url: string) => {
+    if (!user) return;
+    await supabase.from("profiles")
+      .update({ avatar_url: url })
+      .eq("id", user.id);
+    setProfile((prev: any) => ({ ...prev, avatar_url: url }));
+    setShowAvatarUpload(false);
+  };
 
   if (loading || profileLoading || postsLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
@@ -77,16 +86,40 @@ const Profile = () => {
     );
   }
 
+  const isOwnProfile = user.id === profile?.id;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
       <main className="pt-20 pb-8 max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <Avatar className="w-24 h-24">
-              <AvatarImage src={`https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`} alt={profile?.username ?? user.email} />
-              <AvatarFallback>{(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-24 h-24">
+                <AvatarImage
+                  src={
+                    profile?.avatar_url ||
+                    `https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`
+                  }
+                  alt={profile?.username ?? user.email}
+                />
+                <AvatarFallback>
+                  {(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {isOwnProfile && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute -bottom-2 -right-2 bg-white border rounded-full shadow"
+                  onClick={() => setShowAvatarUpload((v) => !v)}
+                  title="Change Avatar"
+                >
+                  <ImagePlus className="h-5 w-5 text-purple-600" />
+                </Button>
+              )}
+            </div>
+
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">{profile?.username ?? user.email}</h2>
@@ -100,6 +133,11 @@ const Profile = () => {
               </div>
             </div>
           </div>
+          {showAvatarUpload && isOwnProfile && (
+            <div className="mt-4">
+              <AvatarUploader userId={user.id} onUploaded={handleAvatarUploaded} />
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-3 gap-1">
           {userPosts.length === 0 && (
@@ -126,3 +164,4 @@ const Profile = () => {
 };
 
 export default Profile;
+
