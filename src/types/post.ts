@@ -1,4 +1,5 @@
 
+
 export interface Post {
   id: string;
   imageUrl: string;
@@ -10,4 +11,6 @@ export interface Post {
   likes: number;
   liked?: boolean;
   timestamp: string;
+  saved?: boolean;
 }
+
