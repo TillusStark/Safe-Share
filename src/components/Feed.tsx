@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,37 +86,7 @@ const Feed = () => {
     fetchPosts();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="max-w-xl mx-auto space-y-6 py-8">
-        {[...Array(3)].map((_, index) => (
-          <Card key={index} className="border-0 shadow-sm">
-            <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
-              <Skeleton className="w-10 h-10 rounded-full" />
-              <Skeleton className="w-24 h-6 rounded" />
-            </CardHeader>
-            <CardContent className="p-0">
-              <Skeleton className="w-full aspect-square" />
-            </CardContent>
-            <CardFooter className="flex flex-col items-start p-4 space-y-3">
-              <Skeleton className="h-8 w-32 rounded" />
-              <Skeleton className="h-4 w-48 rounded" />
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  if (!posts.length) {
-    return (
-      <div className="max-w-xl mx-auto py-32 text-center text-gray-500">
-        No posts yet. Be the first to share something!
-      </div>
-    );
-  }
-
-  const handleLike = (id: string) => {
+  const handleLike = useCallback((id: string) => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -143,9 +114,9 @@ const Feed = () => {
       description: "Like status updated",
       duration: 2000,
     });
-  };
+  }, [user]);
 
-  const handleShare = async (post: Post) => {
+  const handleShare = useCallback(async (post: Post) => {
     const shareUrl = `${window.location.origin}/post/${post.id}`;
     const shareText = `Check out this post by ${post.author.name}`;
     
@@ -177,7 +148,7 @@ const Feed = () => {
         description: "Could not share this post. Please try again.",
       });
     }
-  };
+  }, []);
 
   const handleOpenComments = useCallback((post: Post) => {
     setSelectedPost(post);
@@ -189,76 +160,112 @@ const Feed = () => {
     setSelectedPost(null);
   }, []);
 
-  return (
-    <>
-      <div className="max-w-xl mx-auto space-y-6 py-8">
-        {posts.map((post) => (
-          <Card key={post.id} className="border-0 shadow-sm">
-            <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
-              <img
-                src={post.author.avatar}
-                alt={post.author.name}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-              <span className="font-semibold">{post.author.name}</span>
-            </CardHeader>
-            <CardContent className="p-0">
-              <img
-                src={post.imageUrl}
-                alt="Post"
-                className="w-full aspect-square object-cover"
-              />
-            </CardContent>
-            <CardFooter className="flex flex-col items-start p-4 space-y-3">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center space-x-4">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className={post.liked ? "text-pink-500" : "hover:text-pink-500"}
-                          onClick={() => handleLike(post.id)}
-                          disabled={!user}
-                          aria-label={user ? (post.liked ? "Unlike" : "Like") : "Login to like"}
-                        >
-                          <Heart className="h-6 w-6" fill={post.liked ? "currentColor" : "none"} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {!user && (
-                      <TooltipContent side="top">
-                        Login to like posts
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                  <Button variant="ghost" size="icon" onClick={() => handleOpenComments(post)}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M8 12h.01M12 12h.01M16 12h.01" />
-                    </svg>
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleShare(post)}>
-                    <Share2 className="h-6 w-6" />
-                  </Button>
-                </div>
-                <Button variant="ghost" size="icon">
-                  <Bookmark className="h-6 w-6" />
+  // Render loading skeleton
+  const renderLoadingSkeleton = () => (
+    <div className="max-w-xl mx-auto space-y-6 py-8">
+      {[...Array(3)].map((_, index) => (
+        <Card key={index} className="border-0 shadow-sm">
+          <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
+            <Skeleton className="w-10 h-10 rounded-full" />
+            <Skeleton className="w-24 h-6 rounded" />
+          </CardHeader>
+          <CardContent className="p-0">
+            <Skeleton className="w-full aspect-square" />
+          </CardContent>
+          <CardFooter className="flex flex-col items-start p-4 space-y-3">
+            <Skeleton className="h-8 w-32 rounded" />
+            <Skeleton className="h-4 w-48 rounded" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // Render empty state
+  const renderEmptyState = () => (
+    <div className="max-w-xl mx-auto py-32 text-center text-gray-500">
+      No posts yet. Be the first to share something!
+    </div>
+  );
+
+  // Render posts
+  const renderPosts = () => (
+    <div className="max-w-xl mx-auto space-y-6 py-8">
+      {posts.map((post) => (
+        <Card key={post.id} className="border-0 shadow-sm">
+          <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
+            <img
+              src={post.author.avatar}
+              alt={post.author.name}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+            <span className="font-semibold">{post.author.name}</span>
+          </CardHeader>
+          <CardContent className="p-0">
+            <img
+              src={post.imageUrl}
+              alt="Post"
+              className="w-full aspect-square object-cover"
+            />
+          </CardContent>
+          <CardFooter className="flex flex-col items-start p-4 space-y-3">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center space-x-4">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className={post.liked ? "text-pink-500" : "hover:text-pink-500"}
+                        onClick={() => handleLike(post.id)}
+                        disabled={!user}
+                        aria-label={user ? (post.liked ? "Unlike" : "Like") : "Login to like"}
+                      >
+                        <Heart className="h-6 w-6" fill={post.liked ? "currentColor" : "none"} />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!user && (
+                    <TooltipContent side="top">
+                      Login to like posts
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <Button variant="ghost" size="icon" onClick={() => handleOpenComments(post)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 12h.01M12 12h.01M16 12h.01" />
+                  </svg>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleShare(post)}>
+                  <Share2 className="h-6 w-6" />
                 </Button>
               </div>
-              <div>
-                <p className="font-semibold">{post.likes} likes</p>
-                <p>
-                  <span className="font-semibold mr-2">{post.author.name}</span>
-                  {post.caption}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">{post.timestamp}</p>
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+              <Button variant="ghost" size="icon">
+                <Bookmark className="h-6 w-6" />
+              </Button>
+            </div>
+            <div>
+              <p className="font-semibold">{post.likes} likes</p>
+              <p>
+                <span className="font-semibold mr-2">{post.author.name}</span>
+                {post.caption}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">{post.timestamp}</p>
+            </div>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // Main render function with consistent structure
+  return (
+    <>
+      {loading && renderLoadingSkeleton()}
+      {!loading && !posts.length && renderEmptyState()}
+      {!loading && posts.length > 0 && renderPosts()}
       <CommentsDialog 
         open={commentsOpen}
         onOpenChange={open => {
