@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "@/integrations/supabase/client";
 import AvatarUploader from "@/components/AvatarUploader";
+import { ImagePlus } from "lucide-react";
 
 const Profile = () => {
   const { user, loading } = useSupabaseAuth();
@@ -61,7 +61,6 @@ const Profile = () => {
       });
   }, [user]);
 
-  // Save avatar_url to profile in Supabase
   const handleAvatarUploaded = async (url: string) => {
     if (!user) return;
     await supabase.from("profiles")
@@ -164,4 +163,3 @@ const Profile = () => {
 };
 
 export default Profile;
-
