@@ -57,32 +57,62 @@ const ModerationStatus = ({
         );
       
       case "success":
+        // Check if there are any warnings
+        const hasWarnings = moderationResult?.status === "warning" && moderationResult.issues.length > 0;
+        
         return (
           <div className="py-6">
             <div className="flex flex-col items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+              <div className={`w-16 h-16 ${hasWarnings ? 'bg-amber-50' : 'bg-green-50'} rounded-full flex items-center justify-center mb-4`}>
+                {hasWarnings ? (
+                  <AlertTriangle className="h-8 w-8 text-amber-500" />
+                ) : (
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                )}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 text-center">Ready to share!</h3>
+              <h3 className="text-xl font-semibold text-gray-900 text-center">
+                {hasWarnings ? "Content has some warnings" : "Ready to share!"}
+              </h3>
               <p className="text-sm text-gray-600 text-center mt-2">
-                Your content has passed our safety checks
+                {hasWarnings 
+                  ? "You can still proceed, but your content may be subject to review" 
+                  : "Your content has passed our safety checks"}
               </p>
             </div>
             
-            <div className="flex justify-center space-x-4">
-              <Button 
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={onShare}
-              >
-                Share now
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={onUploadAnother || onReset}
-              >
-                Upload another
-              </Button>
-            </div>
+            {hasWarnings && (
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 mb-6">
+                <h4 className="font-medium text-amber-800 mb-2">Potential issues:</h4>
+                <ul className="space-y-2">
+                  {moderationResult.issues.map((issue, index) => (
+                    <li key={index} className="flex">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-800">{issue.category}</p>
+                        <p className="text-sm text-amber-700">{issue.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {onShare && (
+              <div className="flex justify-center space-x-4">
+                <Button 
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={onShare}
+                >
+                  Share now
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={onUploadAnother || onReset}
+                >
+                  Upload another
+                </Button>
+              </div>
+            )}
           </div>
         );
       

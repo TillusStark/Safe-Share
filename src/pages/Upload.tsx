@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadIcon, AlertTriangle, CheckCircle } from "lucide-react";
@@ -182,6 +183,14 @@ const Upload = () => {
         return;
       }
 
+      // Allow proceeding with warnings, but block if status is failed
+      if (finalResult.status === "warning") {
+        toast({
+          title: "Content requires attention",
+          description: "Some potential issues were found, but you can still proceed.",
+        });
+      }
+
       toast({
         title: "Uploading",
         description: "Uploading your image...",
@@ -271,7 +280,7 @@ const Upload = () => {
             <Button
               className="bg-purple-600 hover:bg-purple-700 text-white"
               onClick={handleShareNow}
-              disabled={isSharingNow || !caption.trim()}
+              disabled={isSharingNow || !caption.trim() || (moderationResult?.status === "failed")}
             >
               {isSharingNow ? "Sharing..." : "Share now"}
             </Button>
@@ -294,6 +303,7 @@ const Upload = () => {
           moderationResult={moderationResult}
           onReset={resetUpload}
           onUploadAnother={handleUploadAnother}
+          onShare={status === "success" ? handleShareNow : undefined}
         />
       );
     }
