@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,8 +86,8 @@ const Feed = () => {
   if (loading) {
     return (
       <div className="max-w-xl mx-auto space-y-6 py-8">
-        [...Array(3)].map((_, i) => (
-          <Card key={i} className="border-0 shadow-sm">
+        {[...Array(3)].map((_, index) => (
+          <Card key={index} className="border-0 shadow-sm">
             <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
               <Skeleton className="w-10 h-10 rounded-full" />
               <Skeleton className="w-24 h-6 rounded" />
@@ -99,7 +100,7 @@ const Feed = () => {
               <Skeleton className="h-4 w-48 rounded" />
             </CardFooter>
           </Card>
-        ))
+        ))}
       </div>
     );
   }
