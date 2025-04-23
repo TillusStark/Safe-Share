@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
@@ -9,7 +9,6 @@ import { toast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import CommentsDialog from "./CommentsDialog";
-import { useCallback, useState } from "react";
 
 const Feed = () => {
   const { user } = useSupabaseAuth();
