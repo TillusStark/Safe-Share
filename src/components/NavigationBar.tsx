@@ -1,5 +1,5 @@
 
-import { HomeIcon, UploadIcon, UserCircle } from "lucide-react";
+import { HomeIcon, UploadIcon, UserCircle, Library } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +21,9 @@ export const NavigationBar = () => {
           </Button>
           <Button variant="ghost" size="icon" onClick={() => navigate("/upload")}>
             <UploadIcon className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/library")}>
+            <Library className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon" onClick={() => navigate("/profile")}>
             <UserCircle className="h-5 w-5" />

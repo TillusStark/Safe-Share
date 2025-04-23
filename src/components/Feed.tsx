@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
+import { Heart, Share2, Bookmark, Library } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Post } from "@/types/post";
@@ -17,6 +16,7 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [saving, setSaving] = useState("");
 
   useEffect(() => {
     async function fetchPosts() {
@@ -46,6 +46,20 @@ const Feed = () => {
           console.error("Error fetching profiles:", profilesError);
         }
 
+        let savedPostIds: string[] = [];
+        if (user) {
+          const { data: saved, error: savedError } = await supabase
+            .from("saved_posts")
+            .select("post_id")
+            .eq("user_id", user.id);
+
+          if (savedError) {
+            console.error("Error fetching saved posts:", savedError);
+          } else {
+            savedPostIds = saved ? saved.map((row) => row.post_id) : [];
+          }
+        }
+
         const profileMap = new Map();
         if (profilesData) {
           profilesData.forEach(profile => {
@@ -66,9 +80,11 @@ const Feed = () => {
               },
               likes: 0,
               timestamp: new Date(post.created_at).toLocaleString(),
+              liked: false,
+              saved: savedPostIds.includes(post.id),
             };
           });
-          
+
           setPosts(transformedPosts);
         }
       } catch (error) {
@@ -82,9 +98,9 @@ const Feed = () => {
         setLoading(false);
       }
     }
-    
+
     fetchPosts();
-  }, []);
+  }, [user]);
 
   const handleLike = useCallback((id: string) => {
     if (!user) {
@@ -119,7 +135,7 @@ const Feed = () => {
   const handleShare = useCallback(async (post: Post) => {
     const shareUrl = `${window.location.origin}/post/${post.id}`;
     const shareText = `Check out this post by ${post.author.name}`;
-    
+
     try {
       if (navigator.share) {
         await navigator.share({
@@ -127,14 +143,14 @@ const Feed = () => {
           text: shareText,
           url: shareUrl,
         });
-        
+
         toast({
           title: "Shared successfully",
           description: "Post has been shared",
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        
+
         toast({
           title: "Link copied",
           description: "Post link copied to clipboard",
@@ -160,7 +176,67 @@ const Feed = () => {
     setSelectedPost(null);
   }, []);
 
-  // Render loading skeleton
+  const handleSave = useCallback(async (post: Post) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Login required",
+        description: "You need to login to save posts.",
+      });
+      return;
+    }
+    setSaving(post.id);
+
+    if (!post.saved) {
+      const { error } = await supabase
+        .from("saved_posts")
+        .insert([
+          {
+            user_id: user.id,
+            post_id: post.id,
+          }
+        ]);
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not save post. Please try again.",
+        });
+      } else {
+        setPosts(prev =>
+          prev.map(p => p.id === post.id ? { ...p, saved: true } : p)
+        );
+        toast({
+          title: "Saved",
+          description: "Post saved to your Library.",
+        });
+      }
+    } else {
+      const { error } = await supabase
+        .from("saved_posts")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("post_id", post.id);
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not remove from Library. Please try again.",
+        });
+      } else {
+        setPosts(prev =>
+          prev.map(p => p.id === post.id ? { ...p, saved: false } : p)
+        );
+        toast({
+          title: "Removed",
+          description: "Post removed from your Library.",
+        });
+      }
+    }
+
+    setSaving("");
+  }, [user]);
+
   const renderLoadingSkeleton = () => (
     <div className="max-w-xl mx-auto space-y-6 py-8">
       {[...Array(3)].map((_, index) => (
@@ -181,14 +257,12 @@ const Feed = () => {
     </div>
   );
 
-  // Render empty state
   const renderEmptyState = () => (
     <div className="max-w-xl mx-auto py-32 text-center text-gray-500">
       No posts yet. Be the first to share something!
     </div>
   );
 
-  // Render posts
   const renderPosts = () => (
     <div className="max-w-xl mx-auto space-y-6 py-8">
       {posts.map((post) => (
@@ -242,9 +316,26 @@ const Feed = () => {
                   <Share2 className="h-6 w-6" />
                 </Button>
               </div>
-              <Button variant="ghost" size="icon">
-                <Bookmark className="h-6 w-6" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant={post.saved ? "secondary" : "ghost"}
+                      size="icon"
+                      onClick={() => handleSave(post)}
+                      disabled={!user || saving === post.id}
+                      aria-label={user ? (post.saved ? "Unsave" : "Save") : "Login to save"}
+                    >
+                      <Bookmark className="h-6 w-6" fill={post.saved ? "currentColor" : "none"} />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!user && (
+                  <TooltipContent side="top">
+                    Login to save posts
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
             <div>
               <p className="font-semibold">{post.likes} likes</p>
@@ -260,7 +351,6 @@ const Feed = () => {
     </div>
   );
 
-  // Main render function with consistent structure
   return (
     <>
       {loading && renderLoadingSkeleton()}
