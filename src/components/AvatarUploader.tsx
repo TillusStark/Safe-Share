@@ -130,7 +130,8 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       });
       
       toast({
-        variant: "warning",
+        // Changed from "warning" to "default" to fix the type error
+        variant: "default", 
         title: "Moderation service unavailable",
         description: "We'll continue with your upload, but it may be subject to review."
       });
