@@ -9,9 +9,11 @@ import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "@/integrations/supabase/client";
 import AvatarUploader from "@/components/AvatarUploader";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { user, loading } = useSupabaseAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -65,11 +67,29 @@ const Profile = () => {
 
   const handleAvatarUploaded = async (url: string) => {
     if (!user) return;
-    await supabase.from("profiles")
-      .update({ avatar_url: url })
-      .eq("id", user.id);
-    setProfile((prev: any) => ({ ...prev, avatar_url: url }));
-    setShowAvatarUpload(false);
+    try {
+      const { error } = await supabase.from("profiles")
+        .update({ avatar_url: url })
+        .eq("id", user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setProfile((prev: any) => ({ ...prev, avatar_url: url }));
+      setShowAvatarUpload(false);
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "There was a problem updating your avatar. Please try again.",
+      });
+    }
   };
 
   const handlePostClick = (postId: string) => {
@@ -155,13 +175,13 @@ const Profile = () => {
           {userPosts.map((post) => (
             <Card 
               key={post.id} 
-              className="aspect-square overflow-hidden border-0 relative"
+              className="aspect-square overflow-hidden border-0 relative cursor-pointer"
               onClick={() => handlePostClick(post.id)}
             >
               <img
                 src={post.image_url}
                 alt={post.caption || "User post"}
-                className="w-full h-full object-cover hover:opacity-90 transition-opacity cursor-pointer"
+                className="w-full h-full object-cover hover:opacity-90 transition-opacity"
               />
               <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                 <Grid3X3 className="text-white w-6 h-6" />
