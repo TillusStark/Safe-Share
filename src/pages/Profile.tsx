@@ -2,15 +2,16 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Grid3X3 } from "lucide-react";
+import { Grid3X3, ImagePlus } from "lucide-react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "@/integrations/supabase/client";
 import AvatarUploader from "@/components/AvatarUploader";
-import { ImagePlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, loading } = useSupabaseAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -71,6 +72,11 @@ const Profile = () => {
     setShowAvatarUpload(false);
   };
 
+  const handlePostClick = (postId: string) => {
+    console.log("Post clicked:", postId);
+    // You can implement navigation to the post detail page here
+  };
+
   if (loading || profileLoading || postsLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
@@ -80,7 +86,7 @@ const Profile = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="p-8">
           <div className="text-lg font-semibold text-center">Please log in to view your profile.</div>
-          <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700" onClick={() => window.location.href = "/login"}>Login</Button>
+          <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700" onClick={() => navigate("/login")}>Login</Button>
         </Card>
       </div>
     );
@@ -113,6 +119,7 @@ const Profile = () => {
                   variant="ghost"
                   className="absolute -bottom-2 -right-2 bg-white border rounded-full shadow"
                   onClick={() => setShowAvatarUpload((v) => !v)}
+                  type="button"
                   title="Change Avatar"
                 >
                   <ImagePlus className="h-5 w-5 text-purple-600" />
@@ -124,7 +131,7 @@ const Profile = () => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">{profile?.username ?? user.email}</h2>
                 <div className="flex gap-2">
-                  <Button variant="outline">Message</Button>
+                  <Button variant="outline" type="button">Message</Button>
                 </div>
               </div>
               <div>
@@ -139,14 +146,18 @@ const Profile = () => {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
           {userPosts.length === 0 && (
-            <div className="col-span-3 py-16 text-center text-gray-400">
+            <div className="col-span-1 sm:col-span-2 md:col-span-3 py-16 text-center text-gray-400">
               No posts yet. <a href="/upload" className="text-purple-600 hover:underline">Share your first post</a>
             </div>
           )}
           {userPosts.map((post) => (
-            <Card key={post.id} className="aspect-square overflow-hidden border-0">
+            <Card 
+              key={post.id} 
+              className="aspect-square overflow-hidden border-0 relative"
+              onClick={() => handlePostClick(post.id)}
+            >
               <img
                 src={post.image_url}
                 alt={post.caption || "User post"}
