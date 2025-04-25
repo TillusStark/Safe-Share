@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ImagePlus, X, Check } from "lucide-react";
+import { ImagePlus, X, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AvatarUploaderProps {
   userId: string;
@@ -17,6 +18,7 @@ type ModerationResult = {
 };
 
 const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
+  const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [moderationStatus, setModerationStatus] = useState<ModerationStatus>("idle");
@@ -37,6 +39,32 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
     setModerationStatus("processing");
     setError("");
 
+    // Check file size
+    const maxSizeMB = 5;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      setError(`File size exceeds ${maxSizeMB}MB limit. Please choose a smaller file.`);
+      setModerationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: `File size exceeds ${maxSizeMB}MB limit. Please choose a smaller file.`
+      });
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError("Unsupported file type. Please upload JPG, PNG, GIF or WEBP.");
+      setModerationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Unsupported file type. Please upload JPG, PNG, GIF or WEBP."
+      });
+      return;
+    }
+
     // Check with moderation function (using caption as "User avatar upload")
     try {
       const resp = await fetch(
@@ -51,21 +79,38 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
           })
         }
       );
+      
+      if (!resp.ok) {
+        throw new Error(`Server responded with status: ${resp.status}`);
+      }
+      
       const result = await resp.json();
       setModerationResult(result);
 
       if (result.status === "failed") {
         setModerationStatus("failed");
         setError("Avatar image did not pass moderation.");
+        toast({
+          variant: "destructive",
+          title: "Moderation failed",
+          description: "The image could not be uploaded due to moderation policy."
+        });
         return;
       }
     } catch (err) {
-      setError("Failed to moderate image. Try again.");
+      console.error("Moderation error:", err);
+      setError("Failed to moderate image. Please try again.");
       setModerationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Moderation error",
+        description: "Could not verify image content. Please try again."
+      });
       return;
     }
 
     setModerationStatus("uploading");
+    
     // Upload to Supabase Storage
     const extMatch = file.name.match(/\.(\w+)$/);
     const ext = extMatch?.[1] || "png"; // default extension
@@ -85,8 +130,14 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       clearInterval(uploadProgressTimer);
 
       if (uploadError) {
-        setError("Upload failed. Please try again.");
+        console.error("Upload error:", uploadError);
+        setError(uploadError.message || "Upload failed. Please try again.");
         setModerationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: uploadError.message || "Could not upload the image. Please try again."
+        });
         return;
       }
       setUploadProgress(100);
@@ -100,14 +151,29 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       if (!urlData.publicUrl) {
         setError("Could not get avatar URL.");
         setModerationStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Upload error",
+          description: "Could not retrieve the uploaded image URL."
+        });
         return;
       }
       setModerationStatus("success");
+      toast({
+        title: "Upload successful",
+        description: "Your avatar has been uploaded successfully."
+      });
       onUploaded(urlData.publicUrl);
     } catch (e: any) {
       clearInterval(uploadProgressTimer);
-      setError("An error occurred uploading. Try again.");
+      console.error("Unexpected upload error:", e);
+      setError(e.message || "An unexpected error occurred uploading. Try again.");
       setModerationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Upload error",
+        description: e.message || "An unexpected error occurred. Please try again."
+      });
     }
   };
 
@@ -123,7 +189,7 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
     <div className="flex flex-col items-center gap-2">
       <input
         type="file"
-        accept="image/png, image/jpeg, image/jpg, image/gif"
+        accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
         style={{ display: "none" }}
         id="avatar-input"
         onChange={handleFileChange}
@@ -146,7 +212,7 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
           </div>
 
           {(moderationStatus === "processing" || moderationStatus === "uploading") && (
-            <Progress value={uploadProgress} className="h-2 w-40 mb-2" />
+            <Progress value={uploadProgress} className="h-2 w-full mb-2" />
           )}
 
           {moderationStatus === "failed" && (
@@ -169,7 +235,9 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
           )}
 
           {error && moderationStatus !== "failed" && (
-            <div className="bg-red-50 text-red-700 rounded p-2 text-xs mb-2">{error}</div>
+            <div className="bg-red-50 text-red-700 rounded p-2 text-xs mb-2 w-full flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" /> {error}
+            </div>
           )}
 
           {(moderationStatus === "idle" || moderationStatus === "failed" || moderationStatus === "error") && (
@@ -187,4 +255,3 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
 };
 
 export default AvatarUploader;
-

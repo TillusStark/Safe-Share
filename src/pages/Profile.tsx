@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,11 +36,16 @@ const Profile = () => {
       .then(({ data, error }) => {
         if (error) {
           console.error("Error fetching profile:", error);
+          toast({
+            variant: "destructive",
+            title: "Profile error",
+            description: "Failed to load profile information"
+          });
         }
         setProfile(data);
         setProfileLoading(false);
       });
-  }, [user]);
+  }, [user, toast]);
 
   useEffect(() => {
     if (!user) {
@@ -82,12 +86,12 @@ const Profile = () => {
         title: "Avatar updated",
         description: "Your profile picture has been updated successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating avatar:", error);
       toast({
         variant: "destructive",
         title: "Update failed",
-        description: "There was a problem updating your avatar. Please try again.",
+        description: error.message || "There was a problem updating your avatar. Please try again.",
       });
     }
   };
