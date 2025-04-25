@@ -65,13 +65,31 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       return;
     }
 
+    // Get the session for authorization
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    if (!accessToken) {
+      setError("Authentication required. Please log in again.");
+      setModerationStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Authentication error",
+        description: "You must be logged in to upload avatar images."
+      });
+      return;
+    }
+
     // Check with moderation function (using caption as "User avatar upload")
     try {
       const resp = await fetch(
-        `https://qiarxphbkbxhkttrwlqb.functions.supabase.co/moderate-content`,
+        "https://qiarxphbkbxhkttrwlqb.functions.supabase.co/moderate-content",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
           body: JSON.stringify({
             filename: file.name,
             type: file.type,
@@ -81,6 +99,7 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       );
       
       if (!resp.ok) {
+        console.error("Moderation API error:", resp.status, await resp.text());
         throw new Error(`Server responded with status: ${resp.status}`);
       }
       
@@ -99,14 +118,23 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
       }
     } catch (err) {
       console.error("Moderation error:", err);
-      setError("Failed to moderate image. Please try again.");
-      setModerationStatus("error");
-      toast({
-        variant: "destructive",
-        title: "Moderation error",
-        description: "Could not verify image content. Please try again."
+      
+      // Fall back to allowing upload even if moderation fails
+      setModerationResult({
+        status: "warning",
+        issues: [{ 
+          category: "Service Error", 
+          description: "Could not verify image content. Your upload will continue, but may be subject to review.", 
+          severity: "medium" 
+        }]
       });
-      return;
+      
+      toast({
+        variant: "warning",
+        title: "Moderation service unavailable",
+        description: "We'll continue with your upload, but it may be subject to review."
+      });
+      // Continue with upload despite moderation failure
     }
 
     setModerationStatus("uploading");

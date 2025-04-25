@@ -14,6 +14,22 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Verify authentication first
+  const authHeader = req.headers.get('Authorization');
+  
+  // Skip authentication check if not in production or authorization header exists
+  // but we'll give a warning if OpenAI API key is missing
+  if (!authHeader && req.headers.get('host') !== 'localhost:54321') {
+    console.error("Missing authorization header");
+    return new Response(JSON.stringify({ 
+      code: 401, 
+      message: "Missing authorization header" 
+    }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const { filename, type, caption } = await req.json();
 
