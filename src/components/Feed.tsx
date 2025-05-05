@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,20 +64,23 @@ const Feed = () => {
         const profileMap = new Map();
         if (profilesData) {
           profilesData.forEach(profile => {
-            profileMap.set(profile.id, profile.username);
+            profileMap.set(profile.id, profile);
           });
         }
 
         if (postsData) {
           const transformedPosts = postsData.map(post => {
-            const username = profileMap.get(post.user_id) || "Unknown User";
+            const profile = profileMap.get(post.user_id);
+            const username = profile?.username || "Unknown User";
             return {
               id: post.id,
               imageUrl: post.image_url,
               caption: post.caption || "",
               author: {
+                id: post.user_id,
                 name: username,
-                avatar: `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
+                username: username,
+                avatar: profile?.avatar_url || `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
               },
               likes: 0,
               timestamp: new Date(post.created_at).toLocaleString(),
@@ -273,7 +277,10 @@ const Feed = () => {
               alt={post.author.name}
               className="w-10 h-10 rounded-full object-cover"
             />
-            <span className="font-semibold">{post.author.name}</span>
+            <div className="flex flex-col">
+              <span className="font-semibold">{post.author.name}</span>
+              <span className="text-sm text-gray-500">@{post.author.username}</span>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <img
@@ -340,7 +347,7 @@ const Feed = () => {
             <div>
               <p className="font-semibold">{post.likes} likes</p>
               <p>
-                <span className="font-semibold mr-2">{post.author.name}</span>
+                <span className="font-semibold mr-2">@{post.author.username}</span>
                 {post.caption}
               </p>
               <p className="text-sm text-gray-500 mt-1">{post.timestamp}</p>

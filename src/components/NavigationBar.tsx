@@ -92,6 +92,11 @@ export const NavigationBar = () => {
             <>
               {/* User is logged in */}
               <div className="flex items-center gap-3">
+                {profile?.username && (
+                  <span className="text-sm font-medium hidden md:block text-purple-600">
+                    @{profile.username}
+                  </span>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Avatar 
