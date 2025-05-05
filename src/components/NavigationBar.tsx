@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const NavigationBar = () => {
   const navigate = useNavigate();
@@ -60,43 +61,71 @@ export const NavigationBar = () => {
           SafeShare
         </h1>
         <div className="flex gap-2 items-center">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Home">
-            <HomeIcon className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/upload")} title="Upload">
-            <UploadIcon className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/library")} title="Library">
-            <Library className="h-5 w-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/")} aria-label="Home">
+                <HomeIcon className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Home</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/upload")} aria-label="Upload">
+                <UploadIcon className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Upload</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/library")} aria-label="Library">
+                <Library className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Library</TooltipContent>
+          </Tooltip>
           
           {user ? (
             <>
               {/* User is logged in */}
               <div className="flex items-center gap-3">
-                <Avatar 
-                  className="cursor-pointer h-8 w-8 border-2 border-purple-200 hover:border-purple-400 transition-colors"
-                  onClick={() => navigate("/profile")}
-                >
-                  <AvatarImage
-                    src={
-                      profile?.avatar_url ||
-                      `https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`
-                    }
-                    alt={profile?.username ?? user.email}
-                  />
-                  <AvatarFallback>
-                    {(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleLogout}
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5 text-gray-500 hover:text-red-500" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Avatar 
+                      className="cursor-pointer h-8 w-8 border-2 border-purple-200 hover:border-purple-400 transition-colors"
+                      onClick={() => navigate("/profile")}
+                    >
+                      <AvatarImage
+                        src={
+                          profile?.avatar_url ||
+                          `https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`
+                        }
+                        alt={profile?.username ?? user.email}
+                      />
+                      <AvatarFallback>
+                        {(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TooltipTrigger>
+                  <TooltipContent>Profile</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handleLogout}
+                      aria-label="Logout"
+                    >
+                      <LogOut className="h-5 w-5 text-gray-500 hover:text-red-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Logout</TooltipContent>
+                </Tooltip>
               </div>
             </>
           ) : (

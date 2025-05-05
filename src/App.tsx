@@ -9,22 +9,25 @@ import Upload from "@/pages/Upload";
 import Library from "@/pages/Library";
 import NotFound from "@/pages/NotFound";
 import OnlineStatusIndicator from "@/components/OnlineStatusIndicator";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const App = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="/library" element={<Library />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-      <OnlineStatusIndicator />
-    </Router>
+    <TooltipProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+        <OnlineStatusIndicator />
+      </Router>
+    </TooltipProvider>
   );
 };
 
