@@ -143,7 +143,9 @@ const AvatarUploader = ({ userId, onUploaded }: AvatarUploaderProps) => {
     // Upload to Supabase Storage
     const extMatch = file.name.match(/\.(\w+)$/);
     const ext = extMatch?.[1] || "png"; // default extension
-    const filePath = `${userId}.${Date.now()}.${ext}`;
+    
+    // Structure the file path to match our RLS policies - userId/filename
+    const filePath = `${userId}/${Date.now()}.${ext}`;
 
     let uploadProgressTimer: any;
     try {
