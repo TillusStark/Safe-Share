@@ -10,6 +10,7 @@ import Library from "@/pages/Library";
 import NotFound from "@/pages/NotFound";
 import OnlineStatusIndicator from "@/components/OnlineStatusIndicator";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import UserProfile from "@/pages/UserProfile";
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<UserProfile />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/library" element={<Library />} />
           <Route path="*" element={<NotFound />} />

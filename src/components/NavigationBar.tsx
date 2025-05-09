@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import ProfileSearch from "./ProfileSearch";
 
 export const NavigationBar = () => {
   const navigate = useNavigate();
@@ -60,6 +61,11 @@ export const NavigationBar = () => {
         >
           SafeShare
         </h1>
+        
+        <div className="flex-1 max-w-sm mx-4 hidden md:block">
+          {user && <ProfileSearch />}
+        </div>
+        
         <div className="flex gap-2 items-center">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -153,6 +159,10 @@ export const NavigationBar = () => {
               </Button>
             </>
           )}
+          
+          <div className="md:hidden">
+            {user && <ProfileSearch />}
+          </div>
         </div>
       </div>
     </div>
