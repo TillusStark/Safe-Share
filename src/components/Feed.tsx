@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, Share2, Bookmark, Library } from "lucide-react";
+import { Heart, Share2, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Post } from "@/types/post";
@@ -10,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import CommentsDialog from "./CommentsDialog";
+import { fetchProfiles, getAvatarUrl } from "@/utils/profileUtils";
 
 const Feed = () => {
   const { user } = useSupabaseAuth();
@@ -23,6 +23,7 @@ const Feed = () => {
     async function fetchPosts() {
       setLoading(true);
       try {
+        // Fetch posts
         const { data: postsData, error: postsError } = await supabase
           .from("posts")
           .select("*")
@@ -39,19 +40,19 @@ const Feed = () => {
           return;
         }
 
-        // Get all unique user IDs from posts to fetch their profiles in a single query
-        const userIds = [...new Set(postsData?.map(post => post.user_id) || [])];
-        
-        // Fetch all profiles for the post authors in one query
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("profiles")
-          .select("*")
-          .in("id", userIds);
-
-        if (profilesError) {
-          console.error("Error fetching profiles:", profilesError);
+        if (!postsData || postsData.length === 0) {
+          setPosts([]);
+          setLoading(false);
+          return;
         }
 
+        // Get all unique user IDs from posts
+        const userIds = [...new Set(postsData.map(post => post.user_id))];
+        
+        // Fetch profiles for all post authors in one query
+        const profileMap = await fetchProfiles(userIds);
+
+        // Fetch saved posts if user is logged in
         let savedPostIds: string[] = [];
         if (user) {
           const { data: saved, error: savedError } = await supabase
@@ -66,38 +67,29 @@ const Feed = () => {
           }
         }
 
-        // Create a map of user profiles for faster lookups
-        const profileMap = new Map();
-        if (profilesData) {
-          profilesData.forEach(profile => {
-            profileMap.set(profile.id, profile);
-          });
-        }
+        // Transform posts data with author information
+        const transformedPosts = postsData.map(post => {
+          const profile = profileMap[post.user_id];
+          const username = profile?.username || "Unknown";
+          
+          return {
+            id: post.id,
+            imageUrl: post.image_url,
+            caption: post.caption || "",
+            author: {
+              id: post.user_id,
+              name: username,
+              username: username,
+              avatar: getAvatarUrl(profile),
+            },
+            likes: 0,
+            timestamp: new Date(post.created_at).toLocaleString(),
+            liked: false,
+            saved: savedPostIds.includes(post.id),
+          };
+        });
 
-        if (postsData) {
-          const transformedPosts = postsData.map(post => {
-            const profile = profileMap.get(post.user_id);
-            const username = profile?.username || "Unknown";
-            
-            return {
-              id: post.id,
-              imageUrl: post.image_url,
-              caption: post.caption || "",
-              author: {
-                id: post.user_id,
-                name: username,
-                username: username,
-                avatar: profile?.avatar_url || `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
-              },
-              likes: 0,
-              timestamp: new Date(post.created_at).toLocaleString(),
-              liked: false,
-              saved: savedPostIds.includes(post.id),
-            };
-          });
-
-          setPosts(transformedPosts);
-        }
+        setPosts(transformedPosts);
       } catch (error) {
         console.error("Unexpected error fetching posts:", error);
         toast({

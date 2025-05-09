@@ -52,45 +52,51 @@ const Library = () => {
           throw error;
         }
 
-        // Get profiles for author name/avatar for each post
-        const authorIds = [
-          ...new Set((savedData || [])
-            .filter(row => row.post) // Filter out any null posts
-            .map((row) => row.post.user_id)),
-        ];
+        // Filter out any null posts first
+        const validSavedData = (savedData || []).filter(row => row.post);
         
+        // Get all unique user IDs from posts to fetch their profiles in a single query
+        const userIds = [...new Set(validSavedData.map(row => row.post.user_id))];
+        
+        // Only fetch profiles if we have valid user IDs
         let profilesMap: Record<string, { username: string, avatar_url: string | null }> = {};
         
-        if (authorIds.length) {
+        if (userIds.length > 0) {
           const { data: profiles, error: profilesError } = await supabase
             .from("profiles")
             .select("id, username, avatar_url")
-            .in("id", authorIds);
+            .in("id", userIds);
             
           if (profilesError) {
             console.error("Error fetching profiles:", profilesError);
-          } else {
-            (profiles || []).forEach(({ id, username, avatar_url }) => {
-              profilesMap[id] = { username, avatar_url };
+          } else if (profiles) {
+            // Create a map of profiles for easier lookup
+            profiles.forEach(profile => {
+              profilesMap[profile.id] = {
+                username: profile.username,
+                avatar_url: profile.avatar_url
+              };
             });
           }
         }
 
+        // Map the posts with author information
         setPosts(
-          (savedData || [])
-            .filter(row => row.post) // Only include rows with post data
-            .map(row => ({
+          validSavedData.map(row => {
+            const profile = profilesMap[row.post.user_id];
+            const username = profile?.username || "Unknown";
+            
+            return {
               ...row,
               post: {
                 ...row.post,
-                authorUsername: profilesMap[row.post.user_id]?.username ?? "Unknown",
-                authorName: profilesMap[row.post.user_id]?.username ?? "Unknown",
-                authorAvatar: profilesMap[row.post.user_id]?.avatar_url || 
-                  `https://api.dicebear.com/8.x/identicon/svg?seed=${
-                    profilesMap[row.post.user_id]?.username ?? "Unknown"
-                  }`,
+                authorUsername: username,
+                authorName: username,
+                authorAvatar: profile?.avatar_url || 
+                  `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
               }
-            }))
+            };
+          })
         );
       } catch (e) {
         console.error("Failed to load saved posts", e);
