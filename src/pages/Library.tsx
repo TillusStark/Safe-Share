@@ -21,6 +21,7 @@ type SavedPost = {
     user_id: string;
     created_at: string;
     authorName: string;
+    authorUsername: string;
     authorAvatar: string;
   }
 };
@@ -53,34 +54,44 @@ const Library = () => {
 
         // Get profiles for author name/avatar for each post
         const authorIds = [
-          ...new Set((savedData || []).map((row) => row.post?.user_id)),
+          ...new Set((savedData || [])
+            .filter(row => row.post) // Filter out any null posts
+            .map((row) => row.post.user_id)),
         ];
-        let profilesMap: Record<string, { username: string }> = {};
+        
+        let profilesMap: Record<string, { username: string, avatar_url: string | null }> = {};
+        
         if (authorIds.length) {
-          const { data: profiles } = await supabase
+          const { data: profiles, error: profilesError } = await supabase
             .from("profiles")
-            .select("id, username")
+            .select("id, username, avatar_url")
             .in("id", authorIds);
-          (profiles || []).forEach(({ id, username }) => {
-            profilesMap[id] = { username };
-          });
+            
+          if (profilesError) {
+            console.error("Error fetching profiles:", profilesError);
+          } else {
+            (profiles || []).forEach(({ id, username, avatar_url }) => {
+              profilesMap[id] = { username, avatar_url };
+            });
+          }
         }
 
         setPosts(
-          (savedData || []).map(row => ({
-            ...row,
-            post: row.post
-              ? {
+          (savedData || [])
+            .filter(row => row.post) // Only include rows with post data
+            .map(row => ({
+              ...row,
+              post: {
                 ...row.post,
+                authorUsername: profilesMap[row.post.user_id]?.username ?? "Unknown",
                 authorName: profilesMap[row.post.user_id]?.username ?? "Unknown",
-                authorAvatar: `https://api.dicebear.com/8.x/identicon/svg?seed=${
-                  profilesMap[row.post.user_id]?.username ?? "Unknown"
-                }`,
+                authorAvatar: profilesMap[row.post.user_id]?.avatar_url || 
+                  `https://api.dicebear.com/8.x/identicon/svg?seed=${
+                    profilesMap[row.post.user_id]?.username ?? "Unknown"
+                  }`,
               }
-              : null,
-          }))
+            }))
         );
-        setLoading(false);
       } catch (e) {
         console.error("Failed to load saved posts", e);
         toast({
@@ -88,6 +99,7 @@ const Library = () => {
           title: "Error",
           description: "Failed to load saved posts.",
         });
+      } finally {
         setLoading(false);
       }
     }
@@ -133,36 +145,34 @@ const Library = () => {
           </div>
         ) : posts.length ? (
           <div className="space-y-6">
-            {posts.map(row =>
-              row.post ? (
-                <Card key={row.id} className="border-0 shadow-sm">
-                  <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
-                    <img
-                      src={row.post.authorAvatar}
-                      alt={row.post.authorName}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <span className="font-semibold">{row.post.authorName}</span>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <img
-                      src={row.post.image_url}
-                      alt={row.post.caption || "Saved post"}
-                      className="w-full aspect-square object-cover"
-                    />
-                  </CardContent>
-                  <CardFooter className="flex flex-col items-start p-4 space-y-3">
-                    <div>
-                      <span className="font-semibold mr-2">{row.post.authorName}</span>
-                      {row.post.caption}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Saved at {new Date(row.created_at).toLocaleString()}
-                    </div>
-                  </CardFooter>
-                </Card>
-              ) : null
-            )}
+            {posts.map(row => (
+              <Card key={row.id} className="border-0 shadow-sm">
+                <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
+                  <img
+                    src={row.post.authorAvatar}
+                    alt={row.post.authorName}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <span className="font-semibold">{row.post.authorUsername}</span>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <img
+                    src={row.post.image_url}
+                    alt={row.post.caption || "Saved post"}
+                    className="w-full aspect-square object-cover"
+                  />
+                </CardContent>
+                <CardFooter className="flex flex-col items-start p-4 space-y-3">
+                  <div>
+                    <span className="font-semibold mr-2">{row.post.authorUsername}</span>
+                    {row.post.caption}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Saved at {new Date(row.created_at).toLocaleString()}
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="py-16 text-center text-gray-400">

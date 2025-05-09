@@ -66,6 +66,7 @@ const Feed = () => {
           }
         }
 
+        // Create a map of user profiles for faster lookups
         const profileMap = new Map();
         if (profilesData) {
           profilesData.forEach(profile => {
@@ -76,7 +77,8 @@ const Feed = () => {
         if (postsData) {
           const transformedPosts = postsData.map(post => {
             const profile = profileMap.get(post.user_id);
-            const username = profile?.username || "Unknown User";
+            const username = profile?.username || "Unknown";
+            
             return {
               id: post.id,
               imageUrl: post.image_url,
