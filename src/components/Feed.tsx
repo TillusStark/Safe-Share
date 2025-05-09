@@ -39,9 +39,14 @@ const Feed = () => {
           return;
         }
 
+        // Get all unique user IDs from posts to fetch their profiles in a single query
+        const userIds = [...new Set(postsData?.map(post => post.user_id) || [])];
+        
+        // Fetch all profiles for the post authors in one query
         const { data: profilesData, error: profilesError } = await supabase
           .from("profiles")
-          .select("*");
+          .select("*")
+          .in("id", userIds);
 
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
