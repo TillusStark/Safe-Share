@@ -10,6 +10,7 @@ import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import CommentsDialog from "./CommentsDialog";
 import { fetchProfiles, getAvatarUrl } from "@/utils/profileUtils";
+import { Link } from "react-router-dom";
 
 const Feed = () => {
   const { user } = useSupabaseAuth();
@@ -271,13 +272,17 @@ const Feed = () => {
       {posts.map((post) => (
         <Card key={post.id} className="border-0 shadow-sm">
           <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
-            <img
-              src={post.author.avatar}
-              alt={post.author.name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <Link to={`/profile/${post.author.id}`}>
+              <img
+                src={post.author.avatar}
+                alt={post.author.name}
+                className="w-10 h-10 rounded-full object-cover hover:opacity-90 transition-opacity"
+              />
+            </Link>
             <div className="flex flex-col">
-              <span className="font-semibold">{post.author.name}</span>
+              <Link to={`/profile/${post.author.id}`} className="font-semibold hover:underline">
+                {post.author.name}
+              </Link>
               <span className="text-sm text-gray-500">@{post.author.username}</span>
             </div>
           </CardHeader>
@@ -346,7 +351,9 @@ const Feed = () => {
             <div>
               <p className="font-semibold">{post.likes} likes</p>
               <p>
-                <span className="font-semibold mr-2">@{post.author.username}</span>
+                <Link to={`/profile/${post.author.id}`} className="font-semibold mr-2 hover:underline">
+                  @{post.author.username}
+                </Link>
                 {post.caption}
               </p>
               <p className="text-sm text-gray-500 mt-1">{post.timestamp}</p>

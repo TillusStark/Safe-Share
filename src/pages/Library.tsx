@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -6,9 +5,10 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "@/components/NavigationBar";
 import { Bookmark } from "lucide-react";
+import { fetchProfiles, getAvatarUrl } from "@/utils/profileUtils";
 
 type SavedPost = {
   id: string;
@@ -58,27 +58,8 @@ const Library = () => {
         // Get all unique user IDs from posts to fetch their profiles in a single query
         const userIds = [...new Set(validSavedData.map(row => row.post.user_id))];
         
-        // Only fetch profiles if we have valid user IDs
-        let profilesMap: Record<string, { username: string, avatar_url: string | null }> = {};
-        
-        if (userIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from("profiles")
-            .select("id, username, avatar_url")
-            .in("id", userIds);
-            
-          if (profilesError) {
-            console.error("Error fetching profiles:", profilesError);
-          } else if (profiles) {
-            // Create a map of profiles for easier lookup
-            profiles.forEach(profile => {
-              profilesMap[profile.id] = {
-                username: profile.username,
-                avatar_url: profile.avatar_url
-              };
-            });
-          }
-        }
+        // Fetch profiles for all authors at once using the utility function
+        const profilesMap = await fetchProfiles(userIds);
 
         // Map the posts with author information
         setPosts(
@@ -92,8 +73,7 @@ const Library = () => {
                 ...row.post,
                 authorUsername: username,
                 authorName: username,
-                authorAvatar: profile?.avatar_url || 
-                  `https://api.dicebear.com/8.x/identicon/svg?seed=${username}`,
+                authorAvatar: getAvatarUrl(profile),
               }
             };
           })
@@ -154,12 +134,16 @@ const Library = () => {
             {posts.map(row => (
               <Card key={row.id} className="border-0 shadow-sm">
                 <CardHeader className="flex-row items-center space-x-4 space-y-0 p-4">
-                  <img
-                    src={row.post.authorAvatar}
-                    alt={row.post.authorName}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <span className="font-semibold">{row.post.authorUsername}</span>
+                  <Link to={`/profile/${row.post.user_id}`}>
+                    <img
+                      src={row.post.authorAvatar}
+                      alt={row.post.authorName}
+                      className="w-10 h-10 rounded-full object-cover hover:opacity-90 transition-opacity"
+                    />
+                  </Link>
+                  <Link to={`/profile/${row.post.user_id}`} className="font-semibold hover:underline">
+                    {row.post.authorUsername}
+                  </Link>
                 </CardHeader>
                 <CardContent className="p-0">
                   <img
@@ -170,7 +154,9 @@ const Library = () => {
                 </CardContent>
                 <CardFooter className="flex flex-col items-start p-4 space-y-3">
                   <div>
-                    <span className="font-semibold mr-2">{row.post.authorUsername}</span>
+                    <Link to={`/profile/${row.post.user_id}`} className="font-semibold mr-2 hover:underline">
+                      {row.post.authorUsername}
+                    </Link>
                     {row.post.caption}
                   </div>
                   <div className="text-sm text-gray-500 mt-1">
