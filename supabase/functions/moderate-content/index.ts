@@ -1,4 +1,5 @@
 
+```typescript
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -8,6 +9,21 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Define critical categories that should escalate a warning to a failure
+const CRITICAL_ISSUE_CATEGORIES_KEYWORDS = [
+  "personal data",
+  "personal information",
+  "violent",
+  "violence",
+  "harassment",
+  "adult content",
+  "nudity",
+  "harmful content",
+  "hate speech",
+  "illegal activities",
+  "self-harm",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -39,7 +55,7 @@ serve(async (req) => {
         status: 'warning', 
         issues: [{ 
           category: "Configuration", 
-          description: "OpenAI API key not configured. Moderation check skipped.", 
+          description: "OpenAI API key not configured. Moderation check skipped, manual review required.", 
           severity: "medium" 
         }] 
       }), {
@@ -67,7 +83,7 @@ serve(async (req) => {
     const messages = [
       { 
         role: "system", 
-        content: "You are an AI content moderator tasked with detecting any personal data, violent, adult, or harmful content based on filename, file type, and caption. Be strict about potential violations. Respond in JSON with: { status: 'passed' | 'failed' | 'warning', issues: [{ category, description, severity }] }. If content appears safe, set status to 'passed' with empty issues array." 
+        content: "You are an AI content moderator tasked with detecting any personal data, violent, adult, or harmful content based on filename, file type, and caption. Be strict about potential violations. Respond in JSON with: { status: 'passed' | 'failed' | 'warning', issues: [{ category, description, severity: 'low' | 'medium' | 'high' }] }. If content appears safe, set status to 'passed' with empty issues array. For clear violations, use 'failed'. Use 'warning' for borderline cases but be specific about category and severity." 
       },
       { 
         role: "user", 
@@ -86,17 +102,17 @@ serve(async (req) => {
         model: "gpt-4o-mini",
         messages,
         max_tokens: 500,
-        temperature: 0.7,
+        temperature: 0.5, // Slightly lower temperature for more deterministic moderation
       }),
     });
 
     if (!response.ok) {
       console.error("OpenAI API error:", response.status, await response.text());
       return new Response(JSON.stringify({ 
-        status: 'warning', 
+        status: 'warning', // API error itself is a warning to allow upload but flag for review
         issues: [{ 
           category: "Service Error", 
-          description: "Could not perform content moderation check. You may proceed, but content will be subject to manual review.", 
+          description: "Could not perform content moderation check due to an API issue. You may proceed, but content will be subject to manual review.", 
           severity: "medium" 
         }] 
       }), {
@@ -106,24 +122,56 @@ serve(async (req) => {
     }
 
     const json = await response.json();
-    console.log("OpenAI response:", JSON.stringify(json));
+    console.log("Raw OpenAI response:", JSON.stringify(json));
 
     let aiMessage = json.choices?.[0]?.message?.content?.trim();
-    console.log("AI message:", aiMessage);
+    console.log("AI message (content):", aiMessage);
 
     // Try to parse the AI result; fallback to 'warning'
     let result;
     try {
+      if (!aiMessage) throw new Error("AI message content is empty or undefined.");
       result = JSON.parse(aiMessage);
-      if (!result.status) { result.status = 'warning'; }
+      if (!result.status) { result.status = 'warning'; } // Default to warning if status is missing
       if (!Array.isArray(result.issues)) { result.issues = []; }
       
-      // Log the final moderation result
-      console.log("Moderation result:", JSON.stringify(result));
+      // **New logic to escalate warnings to failures for critical issues**
+      if (result.status === 'warning' && result.issues.length > 0) {
+        let shouldBeFailed = false;
+        let escalationReason = "";
+
+        for (const issue of result.issues) {
+          const issueCategoryLower = issue.category?.toLowerCase() || "";
+          if (issue.severity === 'high') {
+            shouldBeFailed = true;
+            escalationReason = `High severity issue: ${issue.category}`;
+            break;
+          }
+          if (CRITICAL_ISSUE_CATEGORIES_KEYWORDS.some(keyword => issueCategoryLower.includes(keyword))) {
+            shouldBeFailed = true;
+            escalationReason = `Critical category detected: ${issue.category}`;
+            break;
+          }
+        }
+
+        if (shouldBeFailed) {
+          console.log(`Warning escalated to 'failed'. Reason: ${escalationReason}. Original issues: ${JSON.stringify(result.issues)}`);
+          result.status = 'failed';
+          // Add a new issue or modify an existing one to reflect the escalation
+          result.issues.push({
+            category: "Policy Violation Override",
+            description: `Content moderation status escalated to 'failed' due to: ${escalationReason}. Original AI assessment was 'warning'.`,
+            severity: "high"
+          });
+        }
+      }
+      
+      console.log("Final moderation result:", JSON.stringify(result));
+
     } catch (err) {
-      console.error("Error parsing AI response:", err, "Raw response:", aiMessage);
+      console.error("Error parsing AI response or processing result:", err, "Raw AI message:", aiMessage);
       result = { 
-        status: 'warning', 
+        status: 'warning', // Parsing error results in a warning, allowing upload but flagging for review
         issues: [{ 
           category: "Processing Error", 
           description: "Could not interpret moderation results. You may proceed, but content will be subject to manual review.", 
@@ -137,17 +185,20 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("AI moderation error:", error);
+    console.error("Overall AI moderation error:", error);
+    // Catch-all error also results in a 'warning' to allow upload but ensure manual review.
     return new Response(JSON.stringify({ 
       status: 'warning',
       issues: [{ 
         category: "System Error", 
-        description: "An error occurred during moderation. You may proceed, but content will be subject to manual review.", 
+        description: "An unexpected error occurred during moderation. You may proceed, but content will be subject to manual review.", 
         severity: "medium" 
       }]
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200, // Return 200 to allow upload to continue
+      status: 200, 
     });
   }
 });
+```
+
