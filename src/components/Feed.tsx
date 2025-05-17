@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, Share2, Bookmark } from "lucide-react";
+import { Heart, Share2, Bookmark, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Post } from "@/types/post";
@@ -11,6 +11,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import CommentsDialog from "./CommentsDialog";
 import { fetchProfiles, getAvatarUrl } from "@/utils/profileUtils";
 import { Link } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Feed = () => {
   const { user } = useSupabaseAuth();
@@ -19,6 +30,7 @@ const Feed = () => {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [saving, setSaving] = useState("");
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPosts() {
@@ -241,6 +253,44 @@ const Feed = () => {
     setSaving("");
   }, [user]);
 
+  const handleDeletePost = useCallback(async (postId: string) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Login required",
+        description: "You need to login to delete posts.",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", postId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
+      toast({
+        title: "Post Deleted",
+        description: "Your post has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not delete post. Please try again.",
+      });
+    } finally {
+      setDeletingPostId(null);
+    }
+  }, [user]);
+
   const renderLoadingSkeleton = () => (
     <div className="max-w-xl mx-auto space-y-6 py-8">
       {[...Array(3)].map((_, index) => (
@@ -279,12 +329,38 @@ const Feed = () => {
                 className="w-10 h-10 rounded-full object-cover hover:opacity-90 transition-opacity"
               />
             </Link>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-grow">
               <Link to={`/profile/${post.author.id}`} className="font-semibold hover:underline">
                 {post.author.name}
               </Link>
               <span className="text-sm text-gray-500">@{post.author.username}</span>
             </div>
+            {user && user.id === post.author.id && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your post.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeletingPostId(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDeletePost(post.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             <img
