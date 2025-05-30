@@ -32,22 +32,33 @@ const AdminPosts = () => {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
+      // First fetch posts
+      const { data: postsData, error: postsError } = await supabase
         .from("posts")
-        .select(`
-          id,
-          caption,
-          image_url,
-          created_at,
-          user_id,
-          profiles!posts_user_id_fkey (
-            username
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setPosts(data || []);
+      if (postsError) throw postsError;
+
+      // Then fetch profiles for all user_ids
+      const userIds = postsData?.map(post => post.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      const postsWithProfiles = postsData?.map(post => {
+        const profile = profilesData?.find(p => p.id === post.user_id);
+        return {
+          ...post,
+          profiles: profile ? { username: profile.username } : null
+        };
+      }) || [];
+
+      setPosts(postsWithProfiles);
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to fetch posts");
