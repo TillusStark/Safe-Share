@@ -17,7 +17,7 @@ interface Post {
   user_id: string;
   profiles: {
     username: string;
-  };
+  } | null;
 }
 
 const AdminPosts = () => {
@@ -35,8 +35,14 @@ const AdminPosts = () => {
       const { data, error } = await supabase
         .from("posts")
         .select(`
-          *,
-          profiles (username)
+          id,
+          caption,
+          image_url,
+          created_at,
+          user_id,
+          profiles!posts_user_id_fkey (
+            username
+          )
         `)
         .order("created_at", { ascending: false });
 
