@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,7 @@ const AdminPosts = () => {
           image_url,
           created_at,
           user_id,
-          profiles!posts_user_id_fkey (
+          profiles (
             username
           )
         `)
@@ -172,6 +171,23 @@ const AdminPosts = () => {
       )}
     </div>
   );
+};
+
+const deletePost = async (postId: string) => {
+  try {
+    const { error } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", postId);
+
+    if (error) throw error;
+    
+    setPosts(posts.filter(post => post.id !== postId));
+    toast.success("Post deleted successfully");
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    toast.error("Failed to delete post");
+  }
 };
 
 export default AdminPosts;
