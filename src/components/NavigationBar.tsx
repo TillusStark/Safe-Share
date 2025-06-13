@@ -1,5 +1,5 @@
 
-import { HomeIcon, UploadIcon, UserCircle, Library, LogOut } from "lucide-react";
+import { HomeIcon, UploadIcon, UserCircle, Library, LogOut, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -9,10 +9,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ProfileSearch from "./ProfileSearch";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 export const NavigationBar = () => {
   const navigate = useNavigate();
   const { user, signOut } = useSupabaseAuth();
+  const { isAdmin } = useAdminAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
 
@@ -75,6 +77,17 @@ export const NavigationBar = () => {
             </TooltipTrigger>
             <TooltipContent>Home</TooltipContent>
           </Tooltip>
+          
+          {user && isAdmin && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} aria-label="Admin">
+                  <Shield className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Admin</TooltipContent>
+            </Tooltip>
+          )}
           
           <Tooltip>
             <TooltipTrigger asChild>
