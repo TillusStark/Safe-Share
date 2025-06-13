@@ -1,12 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, UserX, Shield } from "lucide-react";
+import { Search, UserX, Shield, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Profile {
@@ -17,13 +17,16 @@ interface Profile {
 }
 
 const AdminUsers = () => {
+  const { isAdmin, loading: adminLoading } = useAdminAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!adminLoading && isAdmin) {
+      fetchUsers();
+    }
+  }, [adminLoading, isAdmin]);
 
   const fetchUsers = async () => {
     try {
@@ -46,10 +49,21 @@ const AdminUsers = () => {
     user.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (adminLoading || loading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-gray-600">Admin access required</p>
+        </div>
       </div>
     );
   }

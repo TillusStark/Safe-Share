@@ -1,16 +1,16 @@
 
 import { useState } from "react";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import AdminPosts from "@/components/admin/AdminPosts";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
-import { Shield, Users, BarChart3, FileText } from "lucide-react";
+import { Shield, Users, BarChart3, FileText, AlertTriangle } from "lucide-react";
 
 const Admin = () => {
-  const { user, loading } = useSupabaseAuth();
+  const { user, isAdmin, loading } = useAdminAuth();
   const [activeTab, setActiveTab] = useState("posts");
 
   if (loading) {
@@ -23,6 +23,32 @@ const Admin = () => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Access Denied
+              </h2>
+              <p className="text-gray-600 mb-4">
+                You don't have administrator privileges to access this page.
+              </p>
+              <button
+                onClick={() => window.history.back()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

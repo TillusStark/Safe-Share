@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,14 +21,17 @@ interface Post {
 }
 
 const AdminPosts = () => {
+  const { isAdmin, loading: adminLoading } = useAdminAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (!adminLoading && isAdmin) {
+      fetchPosts();
+    }
+  }, [adminLoading, isAdmin]);
 
   const fetchPosts = async () => {
     try {
@@ -68,6 +71,11 @@ const AdminPosts = () => {
   };
 
   const deletePost = async (postId: string) => {
+    if (!isAdmin) {
+      toast.error("Unauthorized: Admin access required");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("posts")
@@ -90,10 +98,21 @@ const AdminPosts = () => {
     return matchesSearch;
   });
 
-  if (loading) {
+  if (adminLoading || loading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-gray-600">Admin access required</p>
+        </div>
       </div>
     );
   }

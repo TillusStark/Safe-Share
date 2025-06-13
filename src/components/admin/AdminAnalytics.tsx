@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { Users, FileText, TrendingUp, Calendar } from "lucide-react";
+import { Users, FileText, TrendingUp, Calendar, AlertTriangle } from "lucide-react";
 
 interface Stats {
   totalUsers: number;
@@ -13,6 +13,7 @@ interface Stats {
 }
 
 const AdminAnalytics = () => {
+  const { isAdmin, loading: adminLoading } = useAdminAuth();
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalPosts: 0,
@@ -22,8 +23,10 @@ const AdminAnalytics = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    if (!adminLoading && isAdmin) {
+      fetchAnalytics();
+    }
+  }, [adminLoading, isAdmin]);
 
   const fetchAnalytics = async () => {
     try {
@@ -75,10 +78,21 @@ const AdminAnalytics = () => {
     { name: 'Sun', posts: 30, users: 22 }
   ];
 
-  if (loading) {
+  if (adminLoading || loading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-gray-600">Admin access required</p>
+        </div>
       </div>
     );
   }
