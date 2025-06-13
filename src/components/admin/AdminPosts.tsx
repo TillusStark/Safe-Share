@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -38,33 +37,48 @@ const AdminPosts = () => {
 
   const fetchPosts = async () => {
     try {
+      setLoading(true);
+      console.log("Fetching posts from database...");
+      
       // First fetch posts
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        console.error("Error fetching posts:", postsError);
+        throw postsError;
+      }
+
+      console.log("Fetched posts:", postsData?.length || 0);
 
       // Then fetch profiles for all user_ids
       const userIds = postsData?.map(post => post.user_id) || [];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, username")
-        .in("id", userIds);
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, username")
+          .in("id", userIds);
 
-      if (profilesError) throw profilesError;
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+          throw profilesError;
+        }
 
-      // Combine the data
-      const postsWithProfiles = postsData?.map(post => {
-        const profile = profilesData?.find(p => p.id === post.user_id);
-        return {
-          ...post,
-          profiles: profile ? { username: profile.username } : null
-        };
-      }) || [];
+        // Combine the data
+        const postsWithProfiles = postsData?.map(post => {
+          const profile = profilesData?.find(p => p.id === post.user_id);
+          return {
+            ...post,
+            profiles: profile ? { username: profile.username } : null
+          };
+        }) || [];
 
-      setPosts(postsWithProfiles);
+        setPosts(postsWithProfiles);
+      } else {
+        setPosts([]);
+      }
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to fetch posts");
@@ -84,24 +98,48 @@ const AdminPosts = () => {
     try {
       console.log("Attempting to delete post:", postId);
       
-      const { error } = await supabase
+      // Delete from saved_posts first (if any references exist)
+      const { error: savedPostsError } = await supabase
+        .from("saved_posts")
+        .delete()
+        .eq("post_id", postId);
+
+      if (savedPostsError) {
+        console.error("Error deleting saved post references:", savedPostsError);
+        // Continue anyway, this might not exist
+      }
+
+      // Delete the main post
+      const { error: deleteError } = await supabase
         .from("posts")
         .delete()
         .eq("id", postId);
 
-      if (error) {
-        console.error("Supabase delete error:", error);
-        throw error;
+      if (deleteError) {
+        console.error("Supabase delete error:", deleteError);
+        throw deleteError;
       }
       
-      // Remove the post from local state
-      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+      console.log("Post deleted successfully from database:", postId);
+      
+      // Remove the post from local state immediately
+      setPosts(prevPosts => {
+        const updatedPosts = prevPosts.filter(post => post.id !== postId);
+        console.log("Updated posts count:", updatedPosts.length);
+        return updatedPosts;
+      });
+      
       toast.success("Post deleted successfully");
-      console.log("Post deleted successfully:", postId);
+      
+      // Refetch posts to ensure consistency
+      await fetchPosts();
       
     } catch (error) {
       console.error("Error deleting post:", error);
       toast.error("Failed to delete post: " + (error as Error).message);
+      
+      // Refetch posts to ensure UI is in sync with database
+      await fetchPosts();
     } finally {
       setDeletingPostId(null);
     }
