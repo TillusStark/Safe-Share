@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           caption: string | null
@@ -37,18 +58,24 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          followers_count: number | null
+          following_count: number | null
           id: string
           username: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id: string
           username: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
           username?: string
         }

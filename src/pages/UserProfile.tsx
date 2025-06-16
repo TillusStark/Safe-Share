@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import NavigationBar from "@/components/NavigationBar";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import FollowButton from "@/components/FollowButton";
+import FollowerCounter from "@/components/FollowerCounter";
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -133,10 +135,14 @@ const UserProfile = () => {
                 <h2 className="text-xl font-semibold">{profile.username}</h2>
                 <div className="flex gap-2">
                   <Button variant="outline" type="button">Message</Button>
+                  <FollowButton userId={userId!} />
                 </div>
               </div>
               <div>
-                <div className="text-gray-500 mt-1">{userPosts.length} posts</div>
+                <div className="flex items-center gap-4">
+                  <div className="text-gray-500">{userPosts.length} posts</div>
+                  <FollowerCounter userId={userId!} />
+                </div>
               </div>
             </div>
           </div>

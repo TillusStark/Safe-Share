@@ -1,34 +1,39 @@
 
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus } from "lucide-react";
-import { toast } from "sonner";
+import { useFollow } from "@/hooks/useFollow";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 interface FollowButtonProps {
-  isFollowing: boolean;
-  onFollow: () => Promise<void>;
-  onUnfollow: () => Promise<void>;
+  userId: string;
+  className?: string;
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-const FollowButton = ({ isFollowing, onFollow, onUnfollow }: FollowButtonProps) => {
+const FollowButton = ({ userId, className, size = "default" }: FollowButtonProps) => {
+  const { user } = useSupabaseAuth();
+  const { isFollowing, loading, follow, unfollow } = useFollow(userId);
+
+  // Don't show follow button for own profile or when not logged in
+  if (!user || user.id === userId) {
+    return null;
+  }
+
   const handleClick = async () => {
-    try {
-      if (isFollowing) {
-        await onUnfollow();
-        toast.success("Unfollowed successfully");
-      } else {
-        await onFollow();
-        toast.success("Following successfully");
-      }
-    } catch (error) {
-      toast.error("An error occurred");
+    if (isFollowing) {
+      await unfollow();
+    } else {
+      await follow();
     }
   };
 
   return (
     <Button 
       onClick={handleClick}
+      disabled={loading}
       variant={isFollowing ? "outline" : "default"}
-      className={isFollowing ? "" : "bg-purple-600 hover:bg-purple-700"}
+      size={size}
+      className={`${isFollowing ? "" : "bg-purple-600 hover:bg-purple-700"} ${className}`}
     >
       {isFollowing ? (
         <>

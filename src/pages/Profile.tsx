@@ -1,3 +1,4 @@
+
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AvatarUploader from "@/components/AvatarUploader";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import FollowerCounter from "@/components/FollowerCounter";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -160,7 +162,10 @@ const Profile = () => {
               </div>
               <div>
                 <div className="font-semibold">{user.email}</div>
-                <div className="text-gray-500 mt-1">{userPosts.length} posts</div>
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="text-gray-500">{userPosts.length} posts</div>
+                  {user && <FollowerCounter userId={user.id} />}
+                </div>
               </div>
             </div>
           </div>
@@ -170,6 +175,7 @@ const Profile = () => {
             </div>
           )}
         </div>
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
           {userPosts.length === 0 && (
             <div className="col-span-1 sm:col-span-2 md:col-span-3 py-16 text-center text-gray-400">
