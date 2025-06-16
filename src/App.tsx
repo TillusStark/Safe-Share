@@ -9,6 +9,7 @@ import Upload from "@/pages/Upload";
 import Library from "@/pages/Library";
 import NotFound from "@/pages/NotFound";
 import Admin from "@/pages/Admin";
+import Explore from "@/pages/Explore";
 import OnlineStatusIndicator from "@/components/OnlineStatusIndicator";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import UserProfile from "@/pages/UserProfile";
@@ -25,6 +26,7 @@ const App = () => {
           <Route path="/profile/:userId" element={<UserProfile />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/library" element={<Library />} />
+          <Route path="/explore" element={<Explore />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

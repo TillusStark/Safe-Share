@@ -1,5 +1,4 @@
-
-import { HomeIcon, UploadIcon, UserCircle, Library, LogOut, Shield } from "lucide-react";
+import { HomeIcon, UploadIcon, UserCircle, Library, LogOut, Shield, Search as SearchIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -8,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import ProfileSearch from "./ProfileSearch";
+import GlobalSearch from "./GlobalSearch";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 export const NavigationBar = () => {
@@ -65,7 +64,7 @@ export const NavigationBar = () => {
         </h1>
         
         <div className="flex-1 max-w-sm mx-4 hidden md:block">
-          {user && <ProfileSearch />}
+          {user && <GlobalSearch />}
         </div>
         
         <div className="flex gap-2 items-center">
@@ -76,6 +75,15 @@ export const NavigationBar = () => {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Home</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/explore")} aria-label="Explore">
+                <SearchIcon className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Explore</TooltipContent>
           </Tooltip>
           
           {user && isAdmin && (
@@ -174,7 +182,7 @@ export const NavigationBar = () => {
           )}
           
           <div className="md:hidden">
-            {user && <ProfileSearch />}
+            {user && <GlobalSearch />}
           </div>
         </div>
       </div>
