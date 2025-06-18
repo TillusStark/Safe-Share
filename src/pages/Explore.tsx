@@ -50,7 +50,7 @@ const Explore = () => {
           image_url,
           caption,
           created_at,
-          profiles!inner(username, avatar_url)
+          user_id
         `)
         .order("created_at", { ascending: false })
         .limit(20);
@@ -68,8 +68,23 @@ const Explore = () => {
           title: "Error",
           description: "Failed to load posts."
         });
-      } else {
-        setPosts(postsData || []);
+      } else if (postsData) {
+        // Get user profiles for the posts
+        const userIds = postsData.map(post => post.user_id);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, username, avatar_url")
+          .in("id", userIds);
+
+        const profileMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+
+        // Combine posts with profiles
+        const postsWithProfiles = postsData.map(post => ({
+          ...post,
+          profiles: profileMap.get(post.user_id) || { username: 'unknown', avatar_url: null }
+        }));
+
+        setPosts(postsWithProfiles);
       }
 
       // Extract hashtags from all posts

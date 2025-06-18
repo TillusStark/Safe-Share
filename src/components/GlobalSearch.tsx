@@ -7,7 +7,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useOnClickOutside } from "@/hooks/use-click-outside";
-import { Card } from "@/components/ui/card";
 
 interface SearchResult {
   type: 'user' | 'post' | 'hashtag';
@@ -60,26 +59,38 @@ export const GlobalSearch = () => {
           })));
         }
 
-        // Search posts by caption
+        // Search posts by caption with manual join
         const { data: posts, error: postsError } = await supabase
           .from("posts")
           .select(`
             id, 
             caption, 
             image_url,
-            profiles!inner(username, avatar_url)
+            user_id
           `)
           .ilike("caption", `%${searchQuery}%`)
           .limit(3);
 
         if (!postsError && posts) {
-          results.push(...posts.map(post => ({
-            type: 'post' as const,
-            id: post.id,
-            title: post.caption || 'Untitled post',
-            subtitle: `by @${post.profiles.username}`,
-            image: post.image_url
-          })));
+          // Get user profiles for the posts
+          const userIds = posts.map(post => post.user_id);
+          const { data: postProfiles } = await supabase
+            .from("profiles")
+            .select("id, username, avatar_url")
+            .in("id", userIds);
+
+          const profileMap = new Map(postProfiles?.map(profile => [profile.id, profile]) || []);
+
+          results.push(...posts.map(post => {
+            const profile = profileMap.get(post.user_id);
+            return {
+              type: 'post' as const,
+              id: post.id,
+              title: post.caption || 'Untitled post',
+              subtitle: profile ? `by @${profile.username}` : 'by unknown user',
+              image: post.image_url
+            };
+          }));
         }
 
         // Search hashtags (extract from captions)
