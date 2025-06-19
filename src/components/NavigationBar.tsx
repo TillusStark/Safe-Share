@@ -1,192 +1,158 @@
-import { HomeIcon, UploadIcon, UserCircle, Library, LogOut, Shield, Search as SearchIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useToast } from "@/hooks/use-toast";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import GlobalSearch from "./GlobalSearch";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 
-export const NavigationBar = () => {
+import { Link, useNavigate } from "react-router-dom";
+import { Camera, Home, Search, User, Upload, Library, Compass, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import GlobalSearch from "./GlobalSearch";
+import NotificationBell from "./NotificationBell";
+import MessagingDialog from "./MessagingDialog";
+
+const NavigationBar = () => {
   const navigate = useNavigate();
   const { user, signOut } = useSupabaseAuth();
-  const { isAdmin } = useAdminAuth();
-  const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    if (!user) return;
-
-    // Fetch user profile data when user is logged in
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Error fetching profile:", error);
-          return;
-        }
-        setProfile(data);
-      });
+    if (user) {
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => setProfile(data));
+    }
   }, [user]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out",
-      });
-      navigate("/");
-    } catch (error) {
-      console.error("Error logging out:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-      });
-    }
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   return (
-    <div className="bg-white shadow-sm fixed top-0 left-0 right-0 z-10">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-        <h1 
-          className="text-xl font-bold text-purple-600 cursor-pointer" 
-          onClick={() => navigate("/")}
-        >
-          SafeShare
-        </h1>
-        
-        <div className="flex-1 max-w-sm mx-4 hidden md:block">
-          {user && <GlobalSearch />}
-        </div>
-        
-        <div className="flex gap-2 items-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")} aria-label="Home">
-                <HomeIcon className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Home</TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/explore")} aria-label="Explore">
-                <SearchIcon className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Explore</TooltipContent>
-          </Tooltip>
-          
-          {user && isAdmin && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} aria-label="Admin">
-                  <Shield className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Admin</TooltipContent>
-            </Tooltip>
-          )}
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/upload")} aria-label="Upload">
-                <UploadIcon className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Upload</TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/library")} aria-label="Library">
-                <Library className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Library</TooltipContent>
-          </Tooltip>
-          
-          {user ? (
-            <>
-              {/* User is logged in */}
-              <div className="flex items-center gap-3">
-                {profile?.username && (
-                  <span className="text-sm font-medium hidden md:block text-purple-600">
-                    @{profile.username}
-                  </span>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Avatar 
-                      className="cursor-pointer h-8 w-8 border-2 border-purple-200 hover:border-purple-400 transition-colors"
-                      onClick={() => navigate("/profile")}
-                    >
-                      <AvatarImage
-                        src={
-                          profile?.avatar_url ||
-                          `https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`
-                        }
-                        alt={profile?.username ?? user.email}
-                      />
-                      <AvatarFallback>
-                        {(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TooltipTrigger>
-                  <TooltipContent>Profile</TooltipContent>
-                </Tooltip>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={handleLogout}
-                      aria-label="Logout"
-                    >
-                      <LogOut className="h-5 w-5 text-gray-500 hover:text-red-500" />
+    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <Camera className="h-8 w-8 text-purple-600" />
+            <span className="text-xl font-bold text-gray-900">PhotoShare</span>
+          </Link>
+
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:block flex-1 max-w-md mx-8">
+            <GlobalSearch />
+          </div>
+
+          {/* Navigation Items */}
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <>
+                {/* Desktop Navigation */}
+                <div className="hidden md:flex items-center space-x-4">
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/">
+                      <Home className="h-5 w-5" />
+                    </Link>
+                  </Button>
+                  
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/explore">
+                      <Compass className="h-5 w-5" />
+                    </Link>
+                  </Button>
+
+                  <NotificationBell />
+                  
+                  <MessagingDialog />
+
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/upload">
+                      <Upload className="h-5 w-5" />
+                    </Link>
+                  </Button>
+
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/library">
+                      <Library className="h-5 w-5" />
+                    </Link>
+                  </Button>
+                </div>
+
+                {/* Profile Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={
+                            profile?.avatar_url ||
+                            `https://api.dicebear.com/8.x/identicon/svg?seed=${profile?.username ?? user.email}`
+                          }
+                          alt={profile?.username ?? user.email}
+                        />
+                        <AvatarFallback>
+                          {(profile?.username ?? user.email ?? "?")[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Logout</TooltipContent>
-                </Tooltip>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Mobile Navigation */}
+                <div className="md:hidden flex items-center space-x-2">
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/explore">
+                      <Search className="h-5 w-5" />
+                    </Link>
+                  </Button>
+                  <NotificationBell />
+                  <MessagingDialog />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
               </div>
-            </>
-          ) : (
-            <>
-              {/* User is not logged in */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/login")}
-                className="text-purple-600 border-purple-200 hover:bg-purple-50"
-              >
-                Login
-              </Button>
-              <Button 
-                size="sm" 
-                onClick={() => navigate("/signup")}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                Sign Up
-              </Button>
-            </>
-          )}
-          
-          <div className="md:hidden">
-            {user && <GlobalSearch />}
+            )}
           </div>
         </div>
+
+        {/* Mobile Search Bar */}
+        {user && (
+          <div className="md:hidden pb-3">
+            <GlobalSearch />
+          </div>
+        )}
       </div>
-    </div>
+    </nav>
   );
 };
 

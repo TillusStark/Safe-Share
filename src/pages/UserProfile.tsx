@@ -11,6 +11,7 @@ import NavigationBar from "@/components/NavigationBar";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import FollowButton from "@/components/FollowButton";
 import FollowerCounter from "@/components/FollowerCounter";
+import UserActions from "@/components/UserActions";
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -83,6 +84,14 @@ const UserProfile = () => {
     fetchProfileAndPosts();
   }, [userId, user, navigate, toast]);
 
+  const handleMessage = () => {
+    // This would open messaging dialog with this user
+    toast({
+      title: "Message feature",
+      description: "Direct messaging will be available soon!"
+    });
+  };
+
   if (loading) {
     return (
       <div>
@@ -134,8 +143,13 @@ const UserProfile = () => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">{profile.username}</h2>
                 <div className="flex gap-2">
-                  <Button variant="outline" type="button">Message</Button>
+                  <Button variant="outline" onClick={handleMessage}>Message</Button>
                   <FollowButton userId={userId!} />
+                  <UserActions 
+                    userId={userId!} 
+                    username={profile.username}
+                    onMessage={handleMessage}
+                  />
                 </div>
               </div>
               <div>
