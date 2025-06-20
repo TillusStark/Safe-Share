@@ -24,7 +24,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "vite-ui-theme",
+  storageKey = "safeshare-ui-theme",
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(
@@ -43,10 +43,26 @@ export function ThemeProvider({
         : "light";
 
       root.classList.add(systemTheme);
-      return;
+    } else {
+      root.classList.add(theme);
     }
+  }, [theme]);
 
-    root.classList.add(theme);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    
+    const handleChange = () => {
+      if (theme === "system") {
+        const root = window.document.documentElement;
+        root.classList.remove("light", "dark");
+        
+        const systemTheme = mediaQuery.matches ? "dark" : "light";
+        root.classList.add(systemTheme);
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
   const setTheme = (theme: Theme) => {
