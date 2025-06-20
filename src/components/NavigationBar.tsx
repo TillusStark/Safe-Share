@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import GlobalSearch from "./GlobalSearch";
 import NotificationBell from "./NotificationBell";
 import MessagingDialog from "./MessagingDialog";
+import DarkModeToggle from "./DarkModeToggle";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
@@ -39,13 +40,13 @@ const NavigationBar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <Camera className="h-8 w-8 text-purple-600" />
-            <span className="text-xl font-bold text-gray-900">SafeShare</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">SafeShare</span>
           </Link>
 
           {/* Search Bar - Desktop */}
@@ -86,6 +87,8 @@ const NavigationBar = () => {
                       <Library className="h-5 w-5" />
                     </Link>
                   </Button>
+
+                  <DarkModeToggle />
                 </div>
 
                 {/* Profile Dropdown */}
@@ -130,10 +133,12 @@ const NavigationBar = () => {
                   </Button>
                   <NotificationBell />
                   <MessagingDialog />
+                  <DarkModeToggle />
                 </div>
               </>
             ) : (
               <div className="flex items-center space-x-2">
+                <DarkModeToggle />
                 <Button variant="outline" asChild>
                   <Link to="/login">Sign In</Link>
                 </Button>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Feed from "@/components/Feed";
 import NavigationBar from "@/components/NavigationBar";
 import FriendSuggestions from "@/components/FriendSuggestions";
+import StoriesCarousel from "@/components/StoriesCarousel";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useEffect, useState } from "react";
 
@@ -19,17 +20,18 @@ const Index = () => {
   }, [loading]);
 
   if (!isReady) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen dark:bg-gray-900">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <NavigationBar />
       <main className="pt-20 pb-8">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Main Feed */}
             <div className="lg:col-span-3">
+              {user && <StoriesCarousel />}
               <Feed />
             </div>
             
