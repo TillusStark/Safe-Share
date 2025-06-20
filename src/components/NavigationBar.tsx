@@ -45,7 +45,7 @@ const NavigationBar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <Camera className="h-8 w-8 text-purple-600" />
-            <span className="text-xl font-bold text-gray-900">PhotoShare</span>
+            <span className="text-xl font-bold text-gray-900">SafeShare</span>
           </Link>
 
           {/* Search Bar - Desktop */}
