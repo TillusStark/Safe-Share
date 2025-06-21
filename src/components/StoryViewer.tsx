@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import AIAnalysis from "./AIAnalysis";
 
 interface Story {
   id: string;
@@ -109,14 +109,30 @@ const StoryViewer = ({
               <p className="text-gray-300 text-xs">{formatTime(story.created_at)}</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-white hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <AIAnalysis
+              type="story"
+              content={`Story image by ${story.user.username}`}
+              context={`Posted ${formatTime(story.created_at)} ago`}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                >
+                  <Brain className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-white hover:bg-white/20"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Story Image */}
