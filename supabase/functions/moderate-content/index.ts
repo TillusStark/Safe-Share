@@ -1,5 +1,4 @@
 
-```typescript
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -10,19 +9,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Define critical categories that should escalate a warning to a failure
-const CRITICAL_ISSUE_CATEGORIES_KEYWORDS = [
-  "personal data",
+// Define violation categories that automatically result in blocking
+const VIOLATION_CATEGORIES = [
   "personal information",
-  "violent",
+  "personal data",
   "violence",
-  "harassment",
+  "harassment", 
   "adult content",
   "nudity",
   "harmful content",
-  "hate speech",
-  "illegal activities",
-  "self-harm",
+  "dangerous content"
 ];
 
 serve(async (req) => {
@@ -30,11 +26,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Verify authentication first
   const authHeader = req.headers.get('Authorization');
   
-  // Skip authentication check if not in production or authorization header exists
-  // but we'll give a warning if OpenAI API key is missing
   if (!authHeader && req.headers.get('host') !== 'localhost:54321') {
     console.error("Missing authorization header");
     return new Response(JSON.stringify({ 
@@ -47,16 +40,16 @@ serve(async (req) => {
   }
 
   try {
-    const { filename, type, caption } = await req.json();
+    const { filename, type, caption, imageData } = await req.json();
 
     if (!openAIApiKey) {
       console.error("Missing OpenAI API Key.");
       return new Response(JSON.stringify({ 
-        status: 'warning', 
+        status: 'failed', 
         issues: [{ 
-          category: "Configuration", 
-          description: "OpenAI API key not configured. Moderation check skipped, manual review required.", 
-          severity: "medium" 
+          category: "Configuration Error", 
+          description: "Content moderation is currently unavailable. Upload blocked for safety.", 
+          severity: "high" 
         }] 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -72,26 +65,72 @@ serve(async (req) => {
       });
     }
 
-    // Include caption in the moderation check if available
-    const contentDescription = caption 
-      ? `Filename: ${filename}\nType: ${type}\nCaption: ${caption}` 
-      : `Filename: ${filename}\nType: ${type}`;
+    console.log("Processing enhanced moderation check for:", filename);
 
-    console.log("Processing moderation check for:", contentDescription);
+    // Enhanced system prompt for strict content moderation
+    const systemPrompt = `You are a strict content moderator for a social media platform. Analyze the provided image and any caption for policy violations.
 
-    // Prompt OpenAI to act as a guideline moderation checker for uploads
+CRITICAL VIOLATIONS (automatically block):
+1. PERSONAL INFORMATION: faces, government IDs, documents, addresses, phone numbers, email addresses, credit cards, licenses
+2. VIOLENCE & HARASSMENT: weapons, fighting, threatening gestures, hate symbols, bullying content
+3. ADULT CONTENT & NUDITY: exposed intimate body parts, sexual content, suggestive poses
+4. HARMFUL CONTENT: drugs, self-harm activities, dangerous stunts, illegal activities
+
+RESPONSE FORMAT: Respond ONLY in JSON format:
+{
+  "status": "passed" | "failed",
+  "confidence": 0-100,
+  "issues": [
+    {
+      "category": "exact violation category",
+      "description": "specific description of what was detected",
+      "severity": "high" | "medium" | "low",
+      "confidence": 0-100
+    }
+  ]
+}
+
+INSTRUCTIONS:
+- Set status to "failed" for ANY violation with >60% confidence
+- Set status to "passed" only if NO violations detected
+- Be strict but accurate - false positives are better than missed violations
+- Analyze both image content AND caption text thoroughly`;
+
+    // Prepare messages for OpenAI
     const messages = [
-      { 
-        role: "system", 
-        content: "You are an AI content moderator tasked with detecting any personal data, violent, adult, or harmful content based on filename, file type, and caption. Be strict about potential violations. Respond in JSON with: { status: 'passed' | 'failed' | 'warning', issues: [{ category, description, severity: 'low' | 'medium' | 'high' }] }. If content appears safe, set status to 'passed' with empty issues array. For clear violations, use 'failed'. Use 'warning' for borderline cases but be specific about category and severity." 
-      },
-      { 
-        role: "user", 
-        content: `${contentDescription}\n\nAnalyze this content for potential community guideline violations.` 
-      }
+      { role: "system", content: systemPrompt }
     ];
 
-    console.log("Sending request to OpenAI moderation API");
+    // Add image analysis if image data is provided
+    if (imageData) {
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Analyze this image for content violations:\nFilename: ${filename}\nType: ${type}${caption ? `\nCaption: ${caption}` : ""}`
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageData
+            }
+          }
+        ]
+      });
+    } else {
+      // Fallback to text-only analysis
+      const contentDescription = caption 
+        ? `Filename: ${filename}\nType: ${type}\nCaption: ${caption}` 
+        : `Filename: ${filename}\nType: ${type}`;
+      
+      messages.push({
+        role: "user",
+        content: `Analyze this content for violations:\n${contentDescription}`
+      });
+    }
+
+    console.log("Sending request to OpenAI GPT-4o for image analysis");
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -99,21 +138,21 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages,
         max_tokens: 500,
-        temperature: 0.5, // Slightly lower temperature for more deterministic moderation
+        temperature: 0.1, // Very low temperature for consistent moderation
       }),
     });
 
     if (!response.ok) {
       console.error("OpenAI API error:", response.status, await response.text());
       return new Response(JSON.stringify({ 
-        status: 'warning', // API error itself is a warning to allow upload but flag for review
+        status: 'failed',
         issues: [{ 
           category: "Service Error", 
-          description: "Could not perform content moderation check due to an API issue. You may proceed, but content will be subject to manual review.", 
-          severity: "medium" 
+          description: "Content analysis failed. Upload blocked for safety.", 
+          severity: "high" 
         }] 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -125,57 +164,54 @@ serve(async (req) => {
     console.log("Raw OpenAI response:", JSON.stringify(json));
 
     let aiMessage = json.choices?.[0]?.message?.content?.trim();
-    console.log("AI message (content):", aiMessage);
+    console.log("AI moderation result:", aiMessage);
 
-    // Try to parse the AI result; fallback to 'warning'
     let result;
     try {
-      if (!aiMessage) throw new Error("AI message content is empty or undefined.");
-      result = JSON.parse(aiMessage);
-      if (!result.status) { result.status = 'warning'; } // Default to warning if status is missing
-      if (!Array.isArray(result.issues)) { result.issues = []; }
+      if (!aiMessage) throw new Error("AI response is empty");
       
-      // **New logic to escalate warnings to failures for critical issues**
-      if (result.status === 'warning' && result.issues.length > 0) {
-        let shouldBeFailed = false;
-        let escalationReason = "";
-
-        for (const issue of result.issues) {
-          const issueCategoryLower = issue.category?.toLowerCase() || "";
-          if (issue.severity === 'high') {
-            shouldBeFailed = true;
-            escalationReason = `High severity issue: ${issue.category}`;
-            break;
-          }
-          if (CRITICAL_ISSUE_CATEGORIES_KEYWORDS.some(keyword => issueCategoryLower.includes(keyword))) {
-            shouldBeFailed = true;
-            escalationReason = `Critical category detected: ${issue.category}`;
-            break;
-          }
-        }
-
-        if (shouldBeFailed) {
-          console.log(`Warning escalated to 'failed'. Reason: ${escalationReason}. Original issues: ${JSON.stringify(result.issues)}`);
+      result = JSON.parse(aiMessage);
+      
+      // Ensure proper structure
+      if (!result.status) result.status = 'failed'; // Default to blocking
+      if (!Array.isArray(result.issues)) result.issues = [];
+      
+      // Enhanced blocking logic - any violation with confidence >60% gets blocked
+      if (result.status === 'passed' && result.issues.length > 0) {
+        const highConfidenceViolations = result.issues.filter(issue => 
+          issue.confidence > 60 || issue.severity === 'high'
+        );
+        
+        if (highConfidenceViolations.length > 0) {
           result.status = 'failed';
-          // Add a new issue or modify an existing one to reflect the escalation
-          result.issues.push({
-            category: "Policy Violation Override",
-            description: `Content moderation status escalated to 'failed' due to: ${escalationReason}. Original AI assessment was 'warning'.`,
-            severity: "high"
-          });
+          console.log(`Blocking content due to high-confidence violations: ${JSON.stringify(highConfidenceViolations)}`);
         }
+      }
+      
+      // Additional safety check for violation categories
+      const hasKnownViolations = result.issues.some(issue => 
+        VIOLATION_CATEGORIES.some(category => 
+          issue.category?.toLowerCase().includes(category.toLowerCase())
+        )
+      );
+      
+      if (hasKnownViolations && result.status !== 'failed') {
+        result.status = 'failed';
+        console.log("Blocking content due to known violation categories");
       }
       
       console.log("Final moderation result:", JSON.stringify(result));
 
     } catch (err) {
-      console.error("Error parsing AI response or processing result:", err, "Raw AI message:", aiMessage);
+      console.error("Error parsing AI response:", err, "Raw AI message:", aiMessage);
+      // On parsing errors, default to blocking for safety
       result = { 
-        status: 'warning', // Parsing error results in a warning, allowing upload but flagging for review
+        status: 'failed',
         issues: [{ 
-          category: "Processing Error", 
-          description: "Could not interpret moderation results. You may proceed, but content will be subject to manual review.", 
-          severity: "medium" 
+          category: "Analysis Error", 
+          description: "Could not analyze content properly. Upload blocked for safety.", 
+          severity: "high",
+          confidence: 100
         }] 
       };
     }
@@ -185,14 +221,15 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("Overall AI moderation error:", error);
-    // Catch-all error also results in a 'warning' to allow upload but ensure manual review.
+    console.error("Overall moderation error:", error);
+    // All errors result in blocking for safety
     return new Response(JSON.stringify({ 
-      status: 'warning',
+      status: 'failed',
       issues: [{ 
         category: "System Error", 
-        description: "An unexpected error occurred during moderation. You may proceed, but content will be subject to manual review.", 
-        severity: "medium" 
+        description: "Content moderation system error. Upload blocked for safety.", 
+        severity: "high",
+        confidence: 100
       }]
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -200,5 +237,3 @@ serve(async (req) => {
     });
   }
 });
-```
-

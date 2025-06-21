@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -31,50 +31,68 @@ const Upload = () => {
   const [caption, setCaption] = useState("");
   const [isSharingNow, setIsSharingNow] = useState(false);
 
+  // Convert file to base64 for image analysis
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const moderateFiles = async (files: File[], caption: string): Promise<ModerationResult> => {
-    // For multiple files, we'll moderate the first one as a representative
     const primaryFile = files[0];
     
     try {
-      console.log("Sending for moderation:", { filename: primaryFile.name, type: primaryFile.type, caption, totalFiles: files.length });
+      console.log("Sending for enhanced moderation:", { filename: primaryFile.name, type: primaryFile.type, caption, totalFiles: files.length });
+      
+      let imageData = null;
+      if (primaryFile.type.startsWith('image/')) {
+        imageData = await fileToBase64(primaryFile);
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
       
       const response = await fetch("https://qiarxphbkbxhkttrwlqb.supabase.co/functions/v1/moderate-content", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`,
+          "Authorization": `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ 
           filename: primaryFile.name, 
           type: primaryFile.type,
           caption: caption,
-          fileCount: files.length
+          fileCount: files.length,
+          imageData: imageData
         }),
       });
       
       if (!response.ok) {
         console.error("Moderation API error:", response.status, response.statusText);
         return {
-          status: "warning",
+          status: "failed",
           issues: [{
-            category: "Service Unavailable",
-            description: "Automatic moderation is currently unavailable. Your content may be subject to manual review.",
-            severity: "medium"
+            category: "Service Error",
+            description: "Content moderation service is unavailable. Upload blocked for safety.",
+            severity: "high"
           }]
         };
       }
       
       const result = await response.json();
-      console.log("Moderation result:", result);
+      console.log("Enhanced moderation result:", result);
       return result;
     } catch (error) {
-      console.error("Error during moderation:", error);
+      console.error("Error during enhanced moderation:", error);
       return {
-        status: "warning",
+        status: "failed",
         issues: [{
-          category: "Connection Error",
-          description: "Could not connect to the moderation service. Your content may be subject to manual review.",
-          severity: "medium"
+          category: "System Error",
+          description: "Unable to verify content safety. Upload blocked for safety.",
+          severity: "high"
         }]
       };
     }
@@ -86,8 +104,8 @@ const Upload = () => {
     setTimeout(async () => {
       setStatus("processing");
       toast({
-        title: "Upload successful",
-        description: `Your ${uploadedFiles.length} image${uploadedFiles.length > 1 ? 's are' : ' is'} now being analyzed by our AI moderation system`,
+        title: "Analyzing content",
+        description: `AI is analyzing your ${uploadedFiles.length} image${uploadedFiles.length > 1 ? 's' : ''} for safety`,
       });
 
       try {
@@ -98,33 +116,31 @@ const Upload = () => {
           setStatus("error");
           toast({
             variant: "destructive",
-            title: "Moderation issues found",
-            description: "Your content could not be approved. Please review the issues.",
+            title: "Content blocked",
+            description: "Your content violates our community guidelines and cannot be uploaded.",
           });
         } else {
           setStatus("success");
           toast({
-            title: result.status === "passed" ? "Content approved" : "Content requires attention",
-            description: result.status === "passed" 
-              ? "Your content has passed our safety checks and is ready to be published"
-              : "Some potential issues were found. Please review before proceeding.",
+            title: "Content approved",
+            description: "Your content has passed our safety checks and is ready to be published.",
           });
         }
       } catch (err) {
         console.error("Unexpected error during moderation process:", err);
         setModerationResult({
-          status: "warning",
+          status: "failed",
           issues: [{ 
-            category: "Processing Error", 
-            description: "Could not fully analyze your files. You may still proceed, but content will be subject to review.", 
-            severity: "medium" 
+            category: "System Error", 
+            description: "Unable to verify content safety. Upload blocked for safety.", 
+            severity: "high" 
           }],
         });
-        setStatus("success");
+        setStatus("error");
         toast({
           variant: "destructive",
-          title: "Moderation notice",
-          description: "We couldn't fully analyze your content, but you may still proceed.",
+          title: "Content analysis failed",
+          description: "Unable to verify content safety. Please try again.",
         });
       }
     }, 1500);
@@ -168,7 +184,7 @@ const Upload = () => {
     
     try {
       toast({
-        title: "Checking content",
+        title: "Final content check",
         description: "Verifying your post with the provided caption...",
       });
       
@@ -179,8 +195,8 @@ const Upload = () => {
         setStatus("error");
         toast({
           variant: "destructive",
-          title: "Moderation failed",
-          description: "Your post with caption didn't pass our content guidelines.",
+          title: "Content blocked",
+          description: "Your post with caption violates our community guidelines.",
         });
         setIsSharingNow(false);
         return;
@@ -191,8 +207,7 @@ const Upload = () => {
         description: `Uploading your ${files.length} image${files.length > 1 ? 's' : ''}...`,
       });
       
-      // Upload each file and create a post for each (or create one post with multiple images)
-      // For now, we'll create separate posts for each image
+      // Upload each file and create posts
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const ext = file.name.split(".").pop();
@@ -254,7 +269,7 @@ const Upload = () => {
   };
 
   const renderModerationStatus = () => {
-    if (status === "success" && files.length > 0) {
+    if (status === "success" && files.length > 0 && moderationResult?.status !== "failed") {
       return (
         <div>
           <ModerationStatus 
@@ -278,7 +293,7 @@ const Upload = () => {
             <Button
               className="bg-purple-600 hover:bg-purple-700 text-white"
               onClick={handleShareNow}
-              disabled={isSharingNow || !caption.trim() || (moderationResult?.status === "failed")}
+              disabled={isSharingNow || !caption.trim()}
             >
               {isSharingNow ? "Sharing..." : `Share ${files.length} photo${files.length > 1 ? 's' : ''}`}
             </Button>
@@ -301,7 +316,7 @@ const Upload = () => {
           moderationResult={moderationResult}
           onReset={resetUpload}
           onUploadAnother={handleUploadAnother}
-          onShare={status === "success" ? handleShareNow : undefined}
+          onShare={status === "success" && moderationResult?.status !== "failed" ? handleShareNow : undefined}
         />
       );
     }
@@ -320,7 +335,7 @@ const Upload = () => {
           </Button>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">New Post</h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Share photos that will be automatically checked by our AI
+            Share photos protected by advanced AI content moderation
           </p>
         </div>
 
@@ -336,28 +351,34 @@ const Upload = () => {
 
         <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-800">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-lg font-medium text-purple-900 dark:text-purple-100">
-              Our AI checks for
+            <CardTitle className="text-lg font-medium text-purple-900 dark:text-purple-100 flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Advanced AI Protection
             </CardTitle>
             <CardDescription className="text-purple-700 dark:text-purple-300">
-              Your content is automatically reviewed for safety
+              Every upload is analyzed by GPT-4o Vision for your safety
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               <ListItem icon={<AlertTriangle className="h-4 w-4 text-purple-500" />}>
-                Personal information protection
+                Personal information detection (IDs, addresses, phone numbers)
               </ListItem>
               <ListItem icon={<AlertTriangle className="h-4 w-4 text-purple-500" />}>
-                Violence and harassment
+                Violence and harassment prevention
               </ListItem>
               <ListItem icon={<AlertTriangle className="h-4 w-4 text-purple-500" />}>
-                Adult content or nudity
+                Adult content and nudity filtering
               </ListItem>
               <ListItem icon={<AlertTriangle className="h-4 w-4 text-purple-500" />}>
-                Harmful or dangerous content
+                Harmful and dangerous content blocking
               </ListItem>
             </ul>
+            <div className="mt-4 p-3 bg-purple-100 dark:bg-purple-800/30 rounded-lg">
+              <p className="text-sm text-purple-800 dark:text-purple-200 font-medium">
+                🛡️ Zero tolerance policy: Content violating our guidelines is automatically blocked
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
